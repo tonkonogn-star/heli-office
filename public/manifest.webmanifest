@@ -1,0 +1,1 @@
+{ "name": "Офис", "short_name": "Офис", "start_url": "/", "display": "standalone", "background_color": "#E9EEF1", "theme_color": "#13212E", "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }

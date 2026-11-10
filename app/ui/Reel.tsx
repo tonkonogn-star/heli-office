@@ -223,6 +223,19 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
     ),
   },
   {
+    title: "Подключай, что хочешь",
+    text: "Gemini и ChatGPT — для второго мнения перед крупным решением. WHOOP, Instagram, Windy, календарь телефона. А через Make — вообще что угодно: Telegram, таблицы, бухгалтера. Всё в «Ещё → Подключения», и всё по желанию.",
+    scene: () => (
+      <div className="sc-team">
+        {["Claude", "Gemini", "ChatGPT", "Make", "WHOOP", "Windy", "Instagram", "Календарь", "Telegram"].map((n, k) => (
+          <span key={n} className="pill2 pop" style={d(0.15 + k * 0.15)}>
+            {n}
+          </span>
+        ))}
+      </div>
+    ),
+  },
+  {
     title: "Твои 20 часов",
     text: "Столько примерно уходит в месяц на то, что теперь делаю я. Это почти месяц рабочего времени в год — на небо, на Марка, на себя.",
     scene: () => (
@@ -249,7 +262,7 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
   },
   {
     title: "Я расту вместе с тобой",
-    text: "Чего-то не хватает или что-то неудобно — просто скажи, что поменять.",
+    text: "Чего-то не хватает или что-то неудобно — просто скажи мне. А можно и самому: твой обычный Claude по подписке умеет менять это приложение.",
     scene: () => (
       <div className="sc-chat">
         <div className="bub me rise" style={d(0.2)}>

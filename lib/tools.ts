@@ -4,6 +4,7 @@ import { forecast } from "./weather";
 import { whoopDays, whoopStatus } from "./whoop";
 import { payPayment, recordLabs, labTrends, CATEGORIES } from "./personal";
 import { clientFinance, aircraftFinance, siteMarket } from "./finance";
+import { secondOpinion, toMake } from "./ext";
 
 const S = (description: string, extra: Record<string, unknown> = {}) => ({ type: "string", description, ...extra });
 const N = (description: string) => ({ type: "number", description });
@@ -11,6 +12,11 @@ const B = (description: string) => ({ type: "boolean", description });
 const SPACE = S("heli — Heliclub, build — стройка и флип-хаусы, general — личное: семья, здоровье, свои дела", { enum: ["heli", "build", "general"] });
 
 export const TOOLS = [
+  {
+    name: "second_opinion",
+    description: "Спросить второе мнение у Gemini и ChatGPT (если Максим подключил их ключи). Вызывай, когда он просит «спроси Gemini/ChatGPT», «собери совет», «что скажут другие», и сам — перед крупным решением: покупка борта или дома, большая сделка, спорный договор. Передай вопрос и короткий контекст с цифрами. Потом сведи мнения в один ответ.",
+    input_schema: { type: "object", properties: { question: S("Вопрос, как его надо задать советникам"), context: S("Факты и цифры, нужные для ответа") }, required: ["question"] },
+  },
   {
     name: "save_client",
     description: "Добавить или изменить клиента Heliclub (владельца доли, чартерного клиента). Без id — новый. Ставки: storage_rate — хранение в месяц, hour_rate — лётный час, maint_rate — час работ по обслуживанию.",
@@ -133,8 +139,19 @@ export const TOOLS = [
 const d = (s: unknown) => (s === "" ? null : (s as string) ?? undefined);
 
 /** Выполняет инструмент. changed=true — данные поменялись, экраны надо обновить. */
+const MAKE_EVENT: Record<string, string> = { log_flight: "flight", draft_invoices: "invoices_drafted", invoice_status: "invoice_status", add_expense: "expense", save_task: "task" };
+
 export async function runTool(name: string, i: any): Promise<{ result: string; changed?: boolean }> {
+  const r = await runToolInner(name, i);
+  // событие уходит в Make, если Максим подключил свой сценарий
+  if (MAKE_EVENT[name] && r.changed) await toMake(MAKE_EVENT[name], { input: i, result: r.result });
+  return r;
+}
+
+async function runToolInner(name: string, i: any): Promise<{ result: string; changed?: boolean }> {
   switch (name) {
+    case "second_opinion":
+      return { result: await secondOpinion(String(i.question || ""), String(i.context || "")) };
     case "save_client": {
       const c = await ops.saveClient(i);
       return { result: `Клиент сохранён: ${c.id} ${c.name}. Хранение ${money(c.storage_rate, c.currency)}/мес, час ${money(c.hour_rate, c.currency)}, обслуживание ${money(c.maint_rate, c.currency)}/ч.`, changed: true };

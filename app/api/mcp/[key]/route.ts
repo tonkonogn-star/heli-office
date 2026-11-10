@@ -18,6 +18,11 @@ const EXTRA = [
     description: "Прочитать переписку Максима в приложении (общий чат или чат помощника), чтобы не переспрашивать. thread: inbox или a:billing, a:contracts, a:build, a:tech, a:finance, a:deals, a:flip, a:devil.",
     input_schema: { type: "object", properties: { thread: { type: "string" }, limit: { type: "integer" } } },
   },
+  {
+    name: "heli_app_wishes",
+    description: "Пожелания Максима к самому приложению (что поменять или добавить), которые он оставил в чате. Нужны, когда он просит Claude Code доработать приложение.",
+    input_schema: { type: "object", properties: {} },
+  },
 ];
 
 const tools = () => [...EXTRA, ...TOOLS].map((t: any) => ({ name: t.name, description: t.description, inputSchema: t.input_schema }));
@@ -27,6 +32,10 @@ async function call(name: string, args: any) {
   if (name === "heli_chat_read") {
     const rows = await q<any>("select role,text,to_char(created_at at time zone 'Europe/Vienna','DD.MM HH24:MI') at from (select * from messages where thread=$1 order by id desc limit $2) x order by id", [args?.thread || "inbox", Math.min(Number(args?.limit) || 30, 100)]);
     return rows.map((r) => `[${r.at}] ${r.role === "user" ? "Максим" : "Помощник"}: ${r.text}`).join("\n\n") || "Переписки нет.";
+  }
+  if (name === "heli_app_wishes") {
+    const rows = await q<any>("select id,title,notes,status,to_char(created_at,'DD.MM.YYYY') at from tasks where title ilike 'Приложение:%' order by created_at desc limit 50");
+    return rows.map((r) => `${r.id} [${r.status}] ${r.at} ${r.title}${r.notes ? " — " + r.notes : ""}`).join("\n") || "Пожеланий нет.";
   }
   const r = await runTool(name, args || {});
   return r.result;

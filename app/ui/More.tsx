@@ -96,7 +96,7 @@ export default function More({ s, reload, go }: { s: any; reload: () => void; go
         <button className="item" onClick={() => go({ tab: "chat", thread: "inbox" })}>
           <div className="grow">
             <div className="t">Улучшить приложение</div>
-            <div className="s">Напиши секретарю, что поменять или добавить — пожелание сохранится</div>
+            <div className="s">Напиши помощнику, что поменять или добавить — пожелание сохранится, а Claude Code по твоей подписке его сделает</div>
           </div>
         </button>
       </div>

@@ -92,6 +92,16 @@ create table if not exists messages (
   created_at timestamptz not null default now()
 );
 create index if not exists messages_thread on messages(thread, id);
+create table if not exists payments (
+  id text primary key, title text not null, amount numeric not null default 0, currency text not null default 'EUR', category text not null default 'Другое',
+  every text not null default 'month', next_due date, notes text not null default '', active boolean not null default true, created_at timestamptz not null default now()
+);
+create table if not exists payment_log (id bigserial primary key, payment_id text, title text not null, amount numeric not null default 0, currency text not null default 'EUR', category text not null default 'Другое', day date not null default current_date);
+create table if not exists labs (
+  id text primary key, day date not null, test text not null, value numeric, value_text text not null default '', unit text not null default '',
+  ref_low numeric, ref_high numeric, lab text not null default '', doc_id text, note text not null default '', created_at timestamptz not null default now()
+);
+create index if not exists labs_test on labs(lower(test), day);
 create table if not exists facts (id bigserial primary key, text text not null, created_at timestamptz not null default now());
 `;
 

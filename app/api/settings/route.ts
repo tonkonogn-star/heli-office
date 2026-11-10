@@ -7,9 +7,15 @@ export const dynamic = "force-dynamic";
 /** Мелкие настройки: онбординг пройден, ключи, Instagram, адрес коннектора. Ключи наружу не отдаются. */
 export const GET = guard(async (req: Request) => {
   const key = await getSetting<string>("mcp_key");
+  let cal = await getSetting<string>("cal_key");
+  if (!cal) {
+    cal = crypto.randomBytes(16).toString("hex");
+    await setSetting("cal_key", cal);
+  }
   const h = req.headers;
-  const origin = `${h.get("x-forwarded-proto") || "https"}://${h.get("x-forwarded-host") || h.get("host")}`;
-  return Response.json({ connector: key ? `${origin}/api/mcp/${key}` : null });
+  const host = h.get("x-forwarded-host") || h.get("host");
+  const origin = `${h.get("x-forwarded-proto") || "https"}://${host}`;
+  return Response.json({ connector: key ? `${origin}/api/mcp/${key}` : null, calendar: `webcal://${host}/api/cal/${cal}.ics`, calendarHttps: `${origin}/api/cal/${cal}.ics` });
 });
 
 export const POST = guard(async (req: Request) => {

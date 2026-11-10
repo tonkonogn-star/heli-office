@@ -6,19 +6,20 @@ import Heli from "./Heli";
 import Build from "./Build";
 import Chat from "./Chat";
 import More from "./More";
+import Personal from "./Personal";
 import Onboarding from "./Onboarding";
 import { QuickAdd } from "./Forms";
 
-export type Tab = "today" | "heli" | "build" | "chat" | "more";
+export type Tab = "today" | "heli" | "build" | "personal" | "chat" | "more";
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "today", label: "Сегодня", icon: "today" },
   { id: "heli", label: "Heliclub", icon: "heli" },
   { id: "build", label: "Стройка", icon: "build" },
+  { id: "personal", label: "Личное", icon: "person" },
   { id: "chat", label: "Помощник", icon: "chat" },
-  { id: "more", label: "Ещё", icon: "more" },
 ];
 
-export type Nav = { tab: Tab; sub?: string; id?: string; thread?: string };
+export type Nav = { tab: Tab; sub?: string; id?: string; thread?: string; files?: { id: string; name: string }[]; draft?: string };
 
 export default function App() {
   const [auth, setAuth] = useState<{ hasPassword: boolean; authed: boolean; error?: string } | null>(null);
@@ -83,7 +84,8 @@ export default function App() {
         {nav.tab === "today" && <Today s={s} go={go} reload={load} />}
         {nav.tab === "heli" && <Heli s={s} nav={nav} go={go} reload={load} />}
         {nav.tab === "build" && <Build s={s} nav={nav} go={go} reload={load} />}
-        {nav.tab === "chat" && <Chat thread={nav.thread || "inbox"} go={go} reload={load} />}
+        {nav.tab === "personal" && <Personal s={s} nav={nav} go={go} reload={load} />}
+        {nav.tab === "chat" && <Chat key={(nav.thread || "inbox") + (nav.files?.length || "")} thread={nav.thread || "inbox"} initFiles={nav.files} initDraft={nav.draft} go={go} reload={load} />}
         {nav.tab === "more" && <More s={s} reload={load} go={go} />}
       </main>
       {nav.tab !== "chat" && (
@@ -128,7 +130,7 @@ function Gate({ mode, onDone }: { mode: "login" | "setup" | "nodb"; onDone?: () 
     <div className="gate">
       <form className="card" onSubmit={submit}>
         <div className="mark">Офис</div>
-        <p className="muted" style={{ marginTop: 0 }}>{mode === "setup" ? "Придумай пароль. Он нужен, чтобы в твоё пространство никто, кроме тебя, не зашёл." : "Твоё рабочее пространство: Heliclub и стройка."}</p>
+        <p className="muted" style={{ marginTop: 0 }}>{mode === "setup" ? "Придумай пароль. Он нужен, чтобы в твоё пространство никто, кроме тебя, не зашёл." : "Твоё пространство: Heliclub, стройка и личное."}</p>
         <Field2 label={mode === "setup" ? "Новый пароль, от 6 символов" : "Пароль"}>
           <input className="input" type="password" autoComplete={mode === "setup" ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
         </Field2>

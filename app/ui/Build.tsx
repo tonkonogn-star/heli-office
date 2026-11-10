@@ -88,7 +88,6 @@ function Site({ s, site, back, go, reload }: { s: any; site: any; back: () => vo
   const spent = spentOf(s, site.id);
   const unpaid = exps.filter((e: any) => !e.paid).reduce((a: number, e: any) => a + Number(e.amount), 0);
   const budget = Number(site.budget);
-  const profit = site.sale_target != null && site.buy_price != null ? Number(site.sale_target) - Number(site.buy_price) - Math.max(spent, budget) : null;
 
   const close = async (st: any) => {
     if (!st.report) {
@@ -129,11 +128,6 @@ function Site({ s, site, back, go, reload }: { s: any; site: any; back: () => vo
           <b className="num">{money(unpaid)}</b>
         </div>
       </div>
-      {profit != null && (
-        <p className="small muted">
-          Прикидка прибыли: продажа {money(site.sale_target)} − покупка {money(site.buy_price)} − ремонт {money(Math.max(spent, budget))} = <b style={{ color: profit < 0 ? "var(--red)" : "var(--go)" }}>{money(profit)}</b>. Без налогов и сборов.
-        </p>
-      )}
 
       <div className="row between">
         <h2>Этапы</h2>

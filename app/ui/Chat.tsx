@@ -16,14 +16,15 @@ const HINTS: Record<string, string[]> = {
   "a:finance": ["Сколько принёс каждый клиент за год?", "Какой будет денежный поток до лета?"],
   "a:deals": ["Что застряло?", "Кому пора напомнить о себе?"],
   "a:flip": ["Оцени дом: адрес, цена 180 000, ремонт около 60 000"],
+  "a:health": ["Разбери мои последние анализы", "Как мой сон за неделю?"],
   "a:devil": ["Хочу купить второй 505-й под доли — найди, где риск"],
 };
 
-export default function Chat({ thread, go, reload }: { thread: string; go: (n: Nav) => void; reload: () => void }) {
+export default function Chat({ thread, initFiles, initDraft, go, reload }: { thread: string; initFiles?: { id: string; name: string }[]; initDraft?: string; go: (n: Nav) => void; reload: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initDraft || "");
   const [live, setLive] = useState<{ text: string; status: string; actions: string[] } | null>(null);
-  const [files, setFiles] = useState<{ id: string; name: string }[]>([]);
+  const [files, setFiles] = useState<{ id: string; name: string }[]>(initFiles || []);
   const [upl, setUpl] = useState(false);
   const [rec, setRec] = useState(false);
   const recRef = useRef<any>(null);
@@ -103,7 +104,7 @@ export default function Chat({ thread, go, reload }: { thread: string; go: (n: N
     setUpl(true);
     try {
       const fd = new FormData();
-      fd.set("space", agent?.space === "build" ? "build" : agent?.space === "heli" ? "heli" : "general");
+      fd.set("space", agent?.space === "build" || agent?.space === "heli" || agent?.space === "general" ? agent.space : "general");
       for (const f of Array.from(list)) fd.append("file", f);
       const r = await api("/api/docs", { method: "POST", body: fd });
       setFiles((x) => [...x, ...r.docs]);

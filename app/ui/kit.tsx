@@ -49,6 +49,9 @@ const P: Record<string, string> = {
   doc: "M7 3h7l5 5v13H7zM14 3v5h5",
   down: "M12 4v12m-5-5l5 5 5-5M5 20h14",
   stop: "M7 7h10v10H7z",
+  person: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c0-4 3.6-7 8-7s8 3 8 7",
+  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4z",
+  cal: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
 };
 
 export function Icon({ n, size }: { n: keyof typeof P | string; size?: number }) {

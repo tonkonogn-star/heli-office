@@ -52,6 +52,29 @@ export function ClaudeConnect() {
   );
 }
 
+/** Подписка на календарь: всё со сроками — в календаре телефона, обновляется само. */
+export function CalendarConnect() {
+  const [c, setC] = useState<any>(null);
+  useEffect(() => {
+    api("/api/settings").then(setC);
+  }, []);
+  return (
+    <>
+      <p className="small muted" style={{ marginTop: 0 }}>
+        Дела, платежи, сроки этапов и счетов, ТО и страховки появятся в календаре телефона и будут обновляться сами. Напоминание — накануне.
+      </p>
+      <div className="btns">
+        <a className="btn primary" href={c?.calendar || "#"}>
+          Добавить в календарь iPhone
+        </a>
+        <a className="btn" href={c ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(c.calendar)}` : "#"} target="_blank" rel="noreferrer">
+          Google Календарь
+        </a>
+      </div>
+    </>
+  );
+}
+
 export function ConnList({ s, reload }: { s: any; reload: () => void }) {
   const [base, setBase] = useState(false);
   const [ig, setIg] = useState(false);
@@ -72,7 +95,7 @@ export function ConnList({ s, reload }: { s: any; reload: () => void }) {
     {
       logo: "W",
       name: "WHOOP",
-      what: "Сон и восстановление — в утренней сводке и в подсказке, лететь ли сегодня самому.",
+      what: "Сон и восстановление — в утренней сводке, разборе здоровья и в подсказке, лететь ли сегодня самому.",
       state: s.whoop.connected ? "Подключено" : null,
       action: s.whoop.connected ? null : s.whoop.available ? (
         <a className="btn small" href="/api/whoop/connect">

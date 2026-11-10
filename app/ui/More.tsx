@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { api, toast, Sheet } from "./kit";
-import { ClaudeConnect, ConnList } from "./Connections";
+import { ClaudeConnect, ConnList, CalendarConnect } from "./Connections";
 import { FormSheet, FORMS } from "./Forms";
 import { Reel } from "./Onboarding";
 import type { Nav } from "./App";
@@ -29,6 +29,11 @@ export default function More({ s, reload, go }: { s: any; reload: () => void; go
 
       <h2>Подключения</h2>
       <ConnList s={s} reload={reload} />
+
+      <h2>Календарь</h2>
+      <div className="panel pad">
+        <CalendarConnect />
+      </div>
 
       <h2>Claude на телефоне и компьютере</h2>
       <div className="panel pad">

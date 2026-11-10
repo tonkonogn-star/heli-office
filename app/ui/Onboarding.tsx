@@ -1,20 +1,23 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, toast } from "./kit";
-import { ClaudeConnect, ConnList } from "./Connections";
+import { ClaudeConnect, ConnList, CalendarConnect } from "./Connections";
 
 /* Первый запуск: привет и короткий рассказ, подключение к Claude, подключения, первые данные. */
 
 export const SLIDES: { big: string; p: string; art: React.ReactNode }[] = [
   {
-    big: "Два пространства",
-    p: "Heliclub и Стройка. В каждом — свои счета, договоры, сделки, дела и документы. Утром всё важное — на одном экране.",
+    big: "Три пространства",
+    p: "Heliclub, Стройка и Личное. В каждом — свои счета, договоры, дела и документы, в личном — платежи, здоровье и анализы. Утром всё важное — на одном экране.",
     art: (
       <svg viewBox="0 0 300 160" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity=".9">
-        <rect x="14" y="20" width="126" height="120" rx="14" />
-        <rect x="160" y="20" width="126" height="120" rx="14" />
-        <path d="M40 62h74M77 62v12M52 86h50a10 10 0 0 0 10-10H62a12 12 0 0 0-12 12zM60 86v12m34-12v12M50 98h56" />
-        <path d="M188 112V82l35-24 35 24v30M211 112v-22h24v22M182 112h82" />
+        <rect x="6" y="30" width="88" height="100" rx="12" />
+        <rect x="106" y="30" width="88" height="100" rx="12" />
+        <rect x="206" y="30" width="88" height="100" rx="12" />
+        <path d="M24 66h52M50 66v9M32 84h34a7 7 0 0 0 7-7H40a8 8 0 0 0-8 8zM38 84v8m24-8v8M30 92h40" />
+        <path d="M126 106V84l24-16 24 16v22M142 106V92h16v14M120 106h60" />
+        <circle cx="250" cy="66" r="10" />
+        <path d="M230 106c0-12 9-20 20-20s20 8 20 20" />
       </svg>
     ),
   },
@@ -160,6 +163,8 @@ export default function Onboarding({ s, reload }: { s: any; reload: () => void }
             Всё по желанию. Пропущенное можно подключить потом в разделе «Ещё».
           </p>
           <ConnList s={s} reload={reload} />
+          <h2>Календарь в телефоне</h2>
+          <CalendarConnect />
         </>
       )}
 

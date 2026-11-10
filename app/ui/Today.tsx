@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, act, money, day, isPast, Sheet, toast } from "./kit";
+import { api, act, money, day, isPast, Sheet, toast, Icon } from "./kit";
 import type { Nav } from "./App";
 
 const DIRS = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"];
@@ -25,7 +25,12 @@ export default function Today({ s, go, reload }: { s: any; go: (n: Nav) => void;
       <p className="muted small" style={{ margin: "4px 0 0" }}>
         {now.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
       </p>
-      <h1>{hello}, Максим</h1>
+      <div className="row between" style={{ alignItems: "flex-start" }}>
+        <h1>{hello}, Максим</h1>
+        <button className="btn ghost small" aria-label="Настройки и подключения" onClick={() => go({ tab: "more" })} style={{ marginTop: 2 }}>
+          <Icon n="gear" />
+        </button>
+      </div>
 
       <Board s={s} reload={reload} />
 
@@ -89,7 +94,7 @@ export default function Today({ s, go, reload }: { s: any; go: (n: Nav) => void;
             </button>
             <div className="grow">
               <div className="t">{t.title}</div>
-              <div className="s">{t.space === "heli" ? "Heliclub" : t.space === "build" ? "Стройка" : "Разное"}</div>
+              <div className="s">{t.space === "heli" ? "Heliclub" : t.space === "build" ? "Стройка" : "Личное"}</div>
             </div>
             {t.due && <span className={"pill" + (isPast(t.due) ? " red" : "")}>{day(t.due)}</span>}
           </div>
@@ -121,19 +126,32 @@ function Board({ s, reload }: { s: any; reload: () => void }) {
   const [w, setW] = useState<any>(null);
   const [err, setErr] = useState("");
   const [pick, setPick] = useState(false);
+  const [geo, setGeo] = useState<"wait" | "ok" | "no">("wait");
   useEffect(() => {
-    if (!s.base) return;
-    api("/api/weather")
-      .then(setW)
-      .catch((e) => setErr(e.message));
+    // погода там, где он сейчас: координаты телефона; не разрешил — его база
+    const fallback = () => {
+      setGeo("no");
+      if (s.base) api("/api/weather").then(setW).catch((e) => setErr(e.message));
+    };
+    if (!navigator.geolocation) return fallback();
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setGeo("ok");
+        api("/api/weather", { method: "POST", json: { here: true, lat: +p.coords.latitude.toFixed(3), lon: +p.coords.longitude.toFixed(3) } })
+          .then(setW)
+          .catch((e) => setErr(e.message));
+      },
+      fallback,
+      { timeout: 8000, maximumAge: 30 * 60e3 },
+    );
   }, [s.base]);
   const wd = s.whoop?.days?.[0];
 
-  if (!s.base)
+  if (geo === "no" && !s.base)
     return (
       <div className="board">
         <div className="place">Погода для полёта</div>
-        <p style={{ fontSize: 18, margin: "14px 0" }}>Выбери базу — и здесь каждое утро будет ветер, облачность и подсказка, можно ли лететь.</p>
+        <p style={{ fontSize: 18, margin: "14px 0" }}>Разреши доступ к геопозиции — и здесь будет ветер, облачность и подсказка, можно ли лететь там, где ты сейчас. Или выбери базу вручную.</p>
         <button className="btn" onClick={() => setPick(true)}>
           Выбрать базу
         </button>
@@ -147,8 +165,8 @@ function Board({ s, reload }: { s: any; reload: () => void }) {
   return (
     <div className="board">
       <div className="place">
-        <span>{s.base.name}</span>
-        <button onClick={() => setPick(true)}>сменить</button>
+        <span>{w?.base?.name || (geo === "wait" ? "Определяю, где ты…" : s.base?.name)}</span>
+        {!w?.base?.here && <button onClick={() => setPick(true)}>сменить</button>}
       </div>
       <div className={"verdict v-" + (n?.verdict || "GO")} aria-live="polite">
         {n ? n.verdict : "…"}

@@ -126,7 +126,7 @@ async function attachments(ids: string[]) {
   return blocks;
 }
 
-const DEEP = /(договор|спецификац|сверь|проверь цифры|оцени дом|оценка|прогноз|подумай глубоко|разбери подробно|риск)/i;
+const DEEP = /(договор|спецификац|сверь|проверь цифры|оцени дом|оценка|прогноз|подумай глубоко|разбери подробно|риск|анализ)/i;
 
 export async function runChat(thread: string, text: string, docIds: string[], emit: Emit) {
   const key = await apiKey();
@@ -193,6 +193,10 @@ const ACTION_LABEL: Record<string, string> = {
   set_company: "Реквизиты сохранены",
   remember: "Запомнил",
   file_document: "Документ разложен",
+  save_payment: "Платёж сохранён",
+  pay_payment: "Оплата отмечена",
+  log_spend: "Трата записана",
+  record_labs: "Анализы записаны",
 };
 
 /** Цикл модели с инструментами: чат, коннектор и утренняя сводка. */

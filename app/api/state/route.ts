@@ -3,6 +3,7 @@ import { q, getSetting } from "@/lib/db";
 import { overview, company } from "@/lib/ops";
 import { whoopStatus, whoopDays, syncIfStale } from "@/lib/whoop";
 import { apiKey } from "@/lib/chat";
+import { labTrends } from "@/lib/personal";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,20 @@ export const GET = guard(async () => {
     getSetting("google"),
     getSetting("instagram"),
   ]);
+  const [payments, spends, labs] = await Promise.all([
+    q<any>("select * from payments where active order by next_due nulls last, title"),
+    q<any>("select * from payment_log where day >= date_trunc('month', current_date) - interval '2 months' order by day desc, id desc"),
+    labTrends(),
+  ]);
   const charges = await q<any>("select ch.*, c.name client from charges ch join clients c on c.id=ch.client_id where ch.invoice_id is null order by ch.day desc limit 200");
   return Response.json({
     ...o,
     clients,
     invoices,
     charges,
+    payments,
+    spends,
+    labs,
     sites,
     stages,
     expenses,

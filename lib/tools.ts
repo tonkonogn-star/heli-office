@@ -2,11 +2,12 @@ import { q, newId, money, setSetting, getSetting, today } from "./db";
 import * as ops from "./ops";
 import { forecast } from "./weather";
 import { whoopDays, whoopStatus } from "./whoop";
+import { payPayment, recordLabs, labTrends, CATEGORIES } from "./personal";
 
 const S = (description: string, extra: Record<string, unknown> = {}) => ({ type: "string", description, ...extra });
 const N = (description: string) => ({ type: "number", description });
 const B = (description: string) => ({ type: "boolean", description });
-const SPACE = S("heli — Heliclub, build — стройка и флип-хаусы, general — личное и прочее", { enum: ["heli", "build", "general"] });
+const SPACE = S("heli — Heliclub, build — стройка и флип-хаусы, general — личное: семья, здоровье, свои дела", { enum: ["heli", "build", "general"] });
 
 export const TOOLS = [
   {
@@ -84,6 +85,28 @@ export const TOOLS = [
   { name: "file_document", description: "Разложить документ: пространство, полка, переименовать, в архив.", input_schema: { type: "object", properties: { id: S("id"), space: SPACE, shelf: S("Полка: Договоры, Счета, Спецификации, Сметы, Акты, Фото, Разное"), title: S("Название"), archived: B("В архив") }, required: ["id"] } },
   { name: "weather", description: "Погода для полёта на базе: ветер, порывы, облачность, видимость по часам и подсказка GO / ОСТОРОЖНО / НЕТ.", input_schema: { type: "object", properties: {} } },
   { name: "whoop", description: "Самочувствие Максима из WHOOP: восстановление, сон, нагрузка за последние дни.", input_schema: { type: "object", properties: {} } },
+  {
+    name: "save_payment",
+    description: "Личный регулярный или разовый платёж: школа, аренда, коммуналка, страховка, подписки, семья. every: month, quarter, year, once. next_due — когда платить в следующий раз. Без id — новый; active=false — больше не платим.",
+    input_schema: { type: "object", properties: { id: S("id"), title: S("Что"), amount: N("Сумма"), currency: S("Валюта"), category: S("Категория", { enum: CATEGORIES }), every: S("month, quarter, year, once", { enum: ["month", "quarter", "year", "once"] }), next_due: S("YYYY-MM-DD"), notes: S("Заметки"), active: B("Ещё платим") } },
+  },
+  { name: "pay_payment", description: "Отметить платёж оплаченным: попадёт в историю расходов, следующий срок сдвинется сам.", input_schema: { type: "object", properties: { id: S("id платежа"), amount: N("Если сумма отличалась"), day: S("YYYY-MM-DD") }, required: ["id"] } },
+  { name: "log_spend", description: "Разовая личная или семейная трата, которая не повторяется (подарок, поездка, врач).", input_schema: { type: "object", properties: { title: S("Что"), amount: N("Сумма"), currency: S("Валюта"), category: S("Категория", { enum: CATEGORIES }), day: S("YYYY-MM-DD") }, required: ["title", "amount"] } },
+  {
+    name: "record_labs",
+    description: "Записать результаты анализов. Когда Максим прикладывает бланк анализов — выпиши КАЖДЫЙ показатель: название как в бланке, значение, единицы, референсные границы. Дата — дата забора из бланка.",
+    input_schema: {
+      type: "object",
+      properties: {
+        day: S("Дата анализа YYYY-MM-DD"),
+        lab: S("Лаборатория"),
+        doc_id: S("id приложенного документа"),
+        items: { type: "array", items: { type: "object", properties: { test: S("Показатель"), value: S("Значение"), unit: S("Единицы"), ref_low: N("Нижняя граница нормы"), ref_high: N("Верхняя граница нормы"), note: S("") }, required: ["test", "value"] } },
+      },
+      required: ["day", "items"],
+    },
+  },
+  { name: "lab_trends", description: "Все анализы Максима по показателям во времени, с отметкой выхода за норму. Для комплексного разбора здоровья.", input_schema: { type: "object", properties: {} } },
 ];
 
 const d = (s: unknown) => (s === "" ? null : (s as string) ?? undefined);
@@ -250,7 +273,7 @@ export async function runTool(name: string, i: any): Promise<{ result: string; c
     }
     case "weather": {
       const f = await forecast();
-      if (!f) return { result: "База не задана — спроси Максима, где он летает, и он выберет её на главном экране." };
+      if (!f) return { result: "Место неизвестно: попроси Максима открыть приложение и разрешить геопозицию или выбрать базу." };
       return { result: `${f.base.name}, источник ${f.source}:\n` + f.hours.map((h: any) => `${h.local} ветер ${h.wind} уз, порывы ${h.gust}, низкая облачность ${h.lowCloud}%, видимость ${h.vis ? Math.round(h.vis / 1000) + " км" : "—"}, осадки ${h.precip} мм → ${h.verdict}`).join("\n") };
     }
     case "whoop": {
@@ -258,6 +281,28 @@ export async function runTool(name: string, i: any): Promise<{ result: string; c
       if (!st.connected) return { result: "WHOOP не подключён." };
       return { result: JSON.stringify(await whoopDays(7)) };
     }
+    case "save_payment": {
+      const id = i.id || newId("p");
+      const ex = (await q<any>("select * from payments where id=$1", [id]))[0] || {};
+      const v = { ...ex, ...Object.fromEntries(Object.entries(i).filter(([, x]) => x !== undefined)) };
+      await q(
+        `insert into payments(id,title,amount,currency,category,every,next_due,notes,active) values($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         on conflict(id) do update set title=$2,amount=$3,currency=$4,category=$5,every=$6,next_due=$7,notes=$8,active=$9`,
+        [id, v.title || "Платёж", Number(v.amount) || 0, v.currency || "EUR", v.category || "Другое", v.every || "month", d(v.next_due) ?? null, v.notes || "", v.active ?? true],
+      );
+      return { result: `Платёж сохранён: ${id} ${v.title}, ${money(v.amount, v.currency || "EUR")}.`, changed: true };
+    }
+    case "pay_payment":
+      return { result: await payPayment(i.id, i.amount != null ? Number(i.amount) : undefined, i.day), changed: true };
+    case "log_spend":
+      await q("insert into payment_log(title,amount,currency,category,day) values($1,$2,$3,$4,$5)", [i.title, Number(i.amount) || 0, i.currency || "EUR", i.category || "Другое", d(i.day) || today()]);
+      return { result: `Записано: ${i.title} — ${money(i.amount, i.currency || "EUR")}.`, changed: true };
+    case "record_labs": {
+      const n = await recordLabs(i.day, i.items, i.lab || "", i.doc_id);
+      return { result: `Записано показателей: ${n}.`, changed: n > 0 };
+    }
+    case "lab_trends":
+      return { result: JSON.stringify(await labTrends()) };
   }
   throw new Error("Нет такого инструмента: " + name);
 }

@@ -247,6 +247,8 @@ export async function audit(): Promise<Issue[]> {
   if (soon(pilot.medical_until, 45)) out.push({ level: soon(pilot.medical_until, 10) ? "red" : "amber", area: "Пилот", text: `Медкомиссия действует до ${fmtDay(pilot.medical_until)}` });
   for (const r of lateTasks) out.push({ level: "amber", area: "Дела", text: `Просрочено: ${r.title} (${fmtDay(r.due)})` });
   for (const r of flightsNoCharge) out.push({ level: "amber", area: "Полёты", text: `Полёт ${fmtDay(r.day)} с ${r.name} (${r.hours} ч) не попал в счёт` });
+  const pays = await q<any>("select title, amount, currency, next_due from payments where active and next_due <= current_date + 3 order by next_due");
+  for (const r of pays) out.push({ level: r.next_due < t ? "red" : "amber", area: "Платежи", text: `${r.title}: ${money(r.amount, r.currency)} — ${r.next_due < t ? "просрочен с" : "до"} ${fmtDay(r.next_due)}` });
   for (const r of noRate) out.push({ level: "amber", area: "Клиенты", text: `${r.name}: не заданы ставки — счёт не собрать` });
   return out;
 }
@@ -301,6 +303,14 @@ export async function dossier() {
   L.push("## Сделки", o.deals.map((x) => `- ${x.id} ${x.title} [${x.space}] — ${x.party}, этап ${x.stage}, ${x.value ? money(x.value, x.currency) : ""}; дальше: ${x.next_step || "—"} ${fmtDay(x.next_date)}`).join("\n") || "нет");
   L.push("## Договоры", contracts.map((c) => `- ${c.id} ${c.title} [${c.space}] — ${c.party}, ${c.status}`).join("\n") || "нет");
   L.push("## Открытые дела", o.tasks.map((t) => `- ${t.id} [${t.space}] ${t.title}${t.due ? " до " + fmtDay(t.due) : ""}`).join("\n") || "нет");
+  const [pays, flagged, labDays] = await Promise.all([
+    q<any>("select id,title,amount,currency,category,every,next_due from payments where active order by next_due nulls last"),
+    q<any>("select distinct on (lower(test)) test, value, unit, ref_low, ref_high, day from labs order by lower(test), day desc"),
+    q<any>("select day, count(*)::int n from labs group by day order by day desc limit 5"),
+  ]);
+  L.push("## Личное: платежи", pays.map((p) => `- ${p.id} ${p.title} [${p.category}] ${money(p.amount, p.currency)}, ${p.every}, следующий ${fmtDay(p.next_due) || "—"}`).join("\n") || "нет");
+  const out = flagged.filter((r) => r.value != null && ((r.ref_low != null && Number(r.value) < Number(r.ref_low)) || (r.ref_high != null && Number(r.value) > Number(r.ref_high))));
+  L.push("## Личное: анализы", (labDays.length ? `Сдавал: ${labDays.map((x) => fmtDay(x.day) + " (" + x.n + ")").join(", ")}. ` : "Анализов пока нет. ") + (out.length ? "Вне нормы в последних: " + out.map((r) => `${r.test} ${r.value} ${r.unit}`).join("; ") : ""));
   L.push("## Последние полёты", o.flights.map((f) => `- ${fmtDay(f.day)} ${f.client || "без клиента"} ${f.hours} ч ${f.route}`).join("\n") || "нет");
   L.push("## Что не сходится (контролёр)", o.issues.map((i) => `- [${i.area}] ${i.text}`).join("\n") || "всё сходится");
   return L.join("\n\n");

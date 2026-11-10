@@ -93,12 +93,13 @@ export function FormSheet({ title, fields, initial, tool, fixed, onClose, done, 
   );
 }
 
+const CATS: [string, string][] = ["Семья", "Школа", "Дом и счета", "Здоровье", "Машина", "Подписки", "Другое"].map((x) => [x, x]);
 const clientOpts = (s: any): [string, string][] => s.clients.map((c: any) => [c.id, c.name]);
 const siteOpts = (s: any): [string, string][] => s.sites.map((x: any) => [x.id, x.name]);
 const SPACES: [string, string][] = [
   ["heli", "Heliclub"],
   ["build", "Стройка"],
-  ["general", "Разное"],
+  ["general", "Личное"],
 ];
 
 export const FORMS = {
@@ -187,6 +188,22 @@ export const FORMS = {
     { k: "next_date", label: "Когда", type: "date" },
     { k: "notes", label: "Заметки", type: "area" },
   ],
+  payment: (): F[] => [
+    { k: "title", label: "Что платим", placeholder: "Школа Марка" },
+    { k: "amount", label: "Сумма", type: "number", half: true },
+    { k: "currency", label: "Валюта", type: "select", half: true, options: [["EUR", "EUR"], ["USD", "USD"], ["UAH", "UAH"]] },
+    { k: "every", label: "Как часто", type: "select", half: true, options: [["month", "Каждый месяц"], ["quarter", "Раз в квартал"], ["year", "Раз в год"], ["once", "Один раз"]] },
+    { k: "next_due", label: "Когда платить", type: "date", half: true },
+    { k: "category", label: "Категория", type: "select", options: CATS },
+    { k: "notes", label: "Заметки (реквизиты, номер договора)", type: "area" },
+  ],
+  spend: (): F[] => [
+    { k: "title", label: "На что", placeholder: "Подарок, врач, поездка" },
+    { k: "amount", label: "Сумма", type: "number", half: true },
+    { k: "currency", label: "Валюта", type: "select", half: true, options: [["EUR", "EUR"], ["USD", "USD"], ["UAH", "UAH"]] },
+    { k: "category", label: "Категория", type: "select", half: true, options: CATS },
+    { k: "day", label: "Дата", type: "date", half: true },
+  ],
   company: (): F[] => [
     { k: "name", label: "Компания в счетах" },
     { k: "address", label: "Адрес", type: "area" },
@@ -201,11 +218,12 @@ export const FORMS = {
 
 /** Быстро добавить с любого экрана. */
 export function QuickAdd({ s, onClose, done, go }: { s: any; onClose: () => void; done: () => void; go: (n: Nav) => void }) {
-  const [form, setForm] = useState<null | "flight" | "charge" | "task" | "expense">(null);
+  const [form, setForm] = useState<null | "flight" | "charge" | "task" | "expense" | "spend">(null);
   if (form === "flight") return <FormSheet title="Полёт" tool="log_flight" fields={FORMS.flight(s)} initial={{ day: todayIso() }} onClose={onClose} done={done} submit="Записать полёт" />;
   if (form === "charge") return <FormSheet title="В счёт клиенту" tool="add_charge" fields={FORMS.charge(s)} initial={{ day: todayIso(), kind: "maintenance", client: s.clients[0]?.id }} onClose={onClose} done={done} submit="Добавить в счёт" />;
   if (form === "task") return <FormSheet title="Дело" tool="save_task" fields={FORMS.task()} initial={{ space: "heli" }} onClose={onClose} done={done} />;
   if (form === "expense") return <FormSheet title="Расход по стройке" tool="add_expense" fields={FORMS.expense(s)} initial={{ day: todayIso(), site: s.sites[0]?.id }} onClose={onClose} done={done} submit="Записать расход" />;
+  if (form === "spend") return <FormSheet title="Личная трата" tool="log_spend" fields={FORMS.spend()} initial={{ day: todayIso(), category: "Семья", currency: "EUR" }} onClose={onClose} done={done} submit="Записать" />;
   const noClients = s.clients.length === 0;
   const noSites = s.sites.length === 0;
   return (
@@ -227,6 +245,12 @@ export function QuickAdd({ s, onClose, done, go }: { s: any; onClose: () => void
           <div className="grow">
             <div className="t">Расход по стройке</div>
             <div className="s">Материалы, работы, счёт подрядчика</div>
+          </div>
+        </button>
+        <button className="item" onClick={() => setForm("spend")}>
+          <div className="grow">
+            <div className="t">Личная трата</div>
+            <div className="s">Семья, школа, врач, подарки</div>
           </div>
         </button>
         <button className="item" onClick={() => setForm("task")}>

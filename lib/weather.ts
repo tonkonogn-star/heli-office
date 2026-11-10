@@ -7,8 +7,28 @@ export type Verdict = "GO" | "ОСТОРОЖНО" | "НЕТ";
 const KT = 1.943844; // м/с → узлы
 
 /** Погода для пилота: Windy, если вставлен ключ; иначе Open-Meteo (бесплатно, без ключа). */
+/** Где Максим сейчас (по геолокации телефона, свежее 36 ч), иначе — его база. */
+export async function place(): Promise<(Base & { here?: boolean }) | null> {
+  const here = await getSetting<Base & { at: number }>("here");
+  if (here && Date.now() - here.at < 36 * 3600e3) return { ...here, here: true };
+  return getSetting<Base>("base");
+}
+
+/** Название места по координатам; не получилось — просто «Где ты сейчас». */
+export async function placeName(lat: number, lon: number) {
+  try {
+    const u = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=ru&lat=${lat}&lon=${lon}`;
+    const r = await fetch(u, { headers: { "user-agent": "heli-office/1.0" }, signal: AbortSignal.timeout(4000) });
+    const j: any = await r.json();
+    const a = j.address || {};
+    return [a.city || a.town || a.village || a.municipality || a.county, a.country].filter(Boolean).join(", ") || "Где ты сейчас";
+  } catch {
+    return "Где ты сейчас";
+  }
+}
+
 export async function forecast(base?: Base | null) {
-  const b = base || (await getSetting<Base>("base"));
+  const b = base || (await place());
   if (!b) return null;
   const om = await openMeteo(b);
   const key = process.env.WINDY_KEY || (await getSetting<any>("keys"))?.windy;

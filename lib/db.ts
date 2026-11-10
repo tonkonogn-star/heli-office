@@ -12,7 +12,9 @@ declare global {
 }
 
 function connString() {
-  return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL_UNPOOLED || "";
+  const cs = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL_UNPOOLED || "";
+  // sslmode=require в новых версиях pg значит «проверять сертификат» — у Supabase это падает; шифрование остаётся через ssl ниже
+  return cs.replace(/([?&])(sslmode|supa)=[^&]*&?/g, "$1").replace(/[?&]$/, "");
 }
 
 function pool(): Pool {

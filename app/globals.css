@@ -341,3 +341,18 @@ button.item.issue { grid-template-columns: 8px 1fr; }
 @keyframes swk { 0%, 40% { transform: translateX(0); } 50%, 90% { transform: translateX(42px); } }
 @keyframes swbg { 0%, 40% { background: rgba(255, 255, 255, 0.2); } 50%, 90% { background: #2b7a56; } }
 @media (prefers-reduced-motion: reduce) { .reel * { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; } }
+
+.sc-mail { width: 100%; display: grid; gap: 8px; }
+.sc-mail .mrow { background: #fff; color: #000; border-radius: 12px; padding: 9px 12px; display: grid; gap: 6px; }
+.sc-mail .mrow div { display: flex; flex-direction: column; }
+.sc-mail .mrow b { font-size: 13.5px; }
+.sc-mail .mrow span { font-size: 12.5px; color: #666; }
+.sc-mail .chip { font-style: normal; width: fit-content; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: #e1f2e8; color: #1d7a4c; }
+.sc-mail .saved { text-align: center; font-size: 13px; opacity: 0.75; margin-top: 2px; }
+.sc-time { width: 100%; display: grid; gap: 9px; }
+.sc-time .total { font-family: var(--display); font-weight: 800; font-size: 60px; letter-spacing: -0.04em; color: #7fdcae; line-height: 1; margin-bottom: 6px; }
+.sc-time .total small { font-size: 16px; color: #fff; opacity: 0.7; letter-spacing: 0; font-weight: 500; }
+.sc-time .trow { display: grid; grid-template-columns: 1fr 70px 34px; gap: 10px; align-items: center; font-size: 13.5px; }
+.sc-time .track { height: 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.sc-time .track i { display: block; height: 100%; background: #7fdcae; }
+.sc-time .trow b { text-align: right; }

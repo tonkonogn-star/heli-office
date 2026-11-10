@@ -82,7 +82,7 @@ export function ConnList({ s, reload }: { s: any; reload: () => void }) {
     {
       logo: "G",
       name: "Почта и Google Drive",
-      what: "Помощник находит в письмах и на диске договоры, счета, сметы и раскладывает их сюда.",
+      what: "Напоминаю о важном, пересказываю длинные письма, сам записываю дела и готовлю ответы — экономит ≈ 6 ч в месяц.",
       state: s.google.connected ? "Подключено" : null,
       action: s.google.available ? (
         <a className="btn small" href="/api/google/connect">

@@ -30,8 +30,8 @@ const d = (s: number) => ({ animationDelay: s + "s" }) as React.CSSProperties;
 
 const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = [
   {
-    title: "С днём рождения, Максим!",
-    text: "Это подарок от Насти и Марка: твой офис, который работает, пока ты летаешь.",
+    title: "Привет, Максим! Я твой помощник.",
+    text: "Подарок на день рождения от Насти и Марка. Через пару минут поймёшь, что я умею. А если коротко — тебе дарят время: около 20 часов каждый месяц.",
     scene: () => (
       <div className="sc-gift">
         <div className="badge sm">
@@ -48,8 +48,8 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
     ),
   },
   {
-    title: "Три пространства",
-    text: "Heliclub, стройка и личное. В каждом свои счета, договоры, дела и документы.",
+    title: "Твой офис в трёх комнатах",
+    text: "Heliclub, стройка и личное. В каждой — свои счета, договоры, дела и документы. Утром всё важное — на одном экране.",
     scene: () => (
       <div className="sc-spaces">
         {[
@@ -66,8 +66,8 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
     ),
   },
   {
-    title: "Скажи — и записано",
-    text: "Пиши или диктуй как другу. Помощник сам разложит по клиентам, счетам и делам.",
+    title: "Скажи — и я запишу",
+    text: "Пиши или диктуй как другу, хоть сразу после посадки. Я сам разложу по клиентам, счетам и делам.",
     scene: () => (
       <div className="sc-chat">
         <div className="bub me rise" style={d(0.2)}>
@@ -86,8 +86,8 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
     ),
   },
   {
-    title: "Счета собираются сами",
-    text: "Хранение — 1-го числа, полёты и работы — сразу после события. Ты только проверяешь и отправляешь.",
+    title: "Счета я соберу сам",
+    text: "Хранение — 1-го числа, полёты и работы — сразу после события. Тебе остаётся проверить и нажать «Отправить».",
     scene: () => (
       <div className="sc-invoice">
         <div className="paper">
@@ -117,7 +117,7 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
   },
   {
     title: "Утро пилота",
-    text: "Ветер и облачность по Windy там, где ты сейчас, сон и восстановление по WHOOP — и подсказка, лететь ли сегодня самому.",
+    text: "Ветер и облачность там, где ты сейчас, твой сон и восстановление по WHOOP — и честная подсказка, лететь ли сегодня самому.",
     scene: () => (
       <div className="sc-sky">
         <div className="go pop" style={d(0.2)}>
@@ -139,7 +139,7 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
   },
   {
     title: "Цифры, которые видно",
-    text: "Сколько приносит каждый клиент и вертолёт, сколько на него уходит и как идёт окупаемость.",
+    text: "Сколько приносит каждый клиент и борт, сколько на него уходит и когда он окупится.",
     scene: () => (
       <div className="sc-fin">
         {[
@@ -166,7 +166,7 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
   },
   {
     title: "Рынок вокруг дома",
-    text: "Помощник находит похожие дома в Рокбрюн-Кап-Мартене и показывает, где твоя цена относительно рынка.",
+    text: "Я найду похожие дома в Кап-Мартене и покажу, где твоя цена продажи относительно рынка.",
     scene: () => (
       <div className="sc-market">
         <div className="scale">
@@ -184,8 +184,8 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
     ),
   },
   {
-    title: "Команда помощников",
-    text: "Счета, договоры, стройка, техконтроль, финансы, сделки, оценщик домов, здоровье и адвокат дьявола. А контролёр каждый день ищет, что требует внимания.",
+    title: "Нас тут целая команда",
+    text: "Счета, договоры, стройка, техконтроль, финансы, сделки, оценщик домов, здоровье и адвокат дьявола. А контролёр каждый день ищет, что требует твоего внимания.",
     scene: () => (
       <div className="sc-team">
         {["Счета", "Договоры", "Стройка", "Техконтроль", "Финансы", "Сделки", "Оценщик", "Здоровье", "Адвокат дьявола"].map((n, k) => (
@@ -197,23 +197,59 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
     ),
   },
   {
-    title: "Почта — по желанию",
-    text: "Можно подключить почту и Google Drive — помощник сам найдёт договоры и счета. Можно не подключать: всё работает и без неё.",
+    title: "Дай мне почту — и выдохни",
+    text: "Я напомню обо всём важном, перескажу длинные письма в двух строках, сам запишу дела и сроки из переписки и подготовлю ответы — тебе останется нажать «Отправить». Не хочешь — не подключай: я работаю и без почты.",
     scene: () => (
-      <div className="sc-toggle">
-        <div className="sw">
-          <i />
-        </div>
-        <div className="lbls">
-          <span>с почтой</span>
-          <span>без почты</span>
+      <div className="sc-mail">
+        {[
+          ["Bell Helicopter", "Re: 505 spec & delivery slots", "Записал дело: ответить до пятницы"],
+          ["Elec Riviera", "Facture n° 2611 — travaux", "Расход по дому: 24 500 €"],
+          ["AeroBaltic", "Contract draft v3", "Ответ готов — отправить?"],
+        ].map(([from, subj, chip], k) => (
+          <div key={from} className="mrow slide-in" style={d(0.2 + k * 0.5)}>
+            <div>
+              <b>{from}</b>
+              <span>{subj}</span>
+            </div>
+            <i className="chip pop" style={d(0.8 + k * 0.5)}>
+              {chip}
+            </i>
+          </div>
+        ))}
+        <div className="saved rise" style={d(2.6)}>
+          ≈ 6 часов в месяц на почте
         </div>
       </div>
     ),
   },
   {
-    title: "Растёт вместе с тобой",
-    text: "Чего-то не хватает — просто скажи в чате, что поменять. С днём рождения! Настя и Марк",
+    title: "Твои 20 часов",
+    text: "Столько примерно уходит в месяц на то, что теперь делаю я. Это почти месяц рабочего времени в год — на небо, на Марка, на себя.",
+    scene: () => (
+      <div className="sc-time">
+        <div className="total pop" style={d(0.1)}>
+          <Count to={20} ms={1800} /> <small>ч / месяц</small>
+        </div>
+        {[
+          ["Договоры и спецификации", 6],
+          ["Почта и ответы", 6],
+          ["Счета клиентам", 5],
+          ["Стройка и документы", 3],
+        ].map(([l, h], k) => (
+          <div key={l as string} className="trow rise" style={d(0.4 + k * 0.25)}>
+            <span>{l}</span>
+            <div className="track">
+              <i className="fill" style={{ width: ((h as number) / 6) * 100 + "%", ...d(0.6 + k * 0.25) }} />
+            </div>
+            <b>{h} ч</b>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    title: "Я расту вместе с тобой",
+    text: "Чего-то не хватает или что-то неудобно — просто скажи, что поменять.",
     scene: () => (
       <div className="sc-chat">
         <div className="bub me rise" style={d(0.2)}>
@@ -221,9 +257,6 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
         </div>
         <div className="bub ai rise" style={d(1.2)}>
           Записал пожелание — сделаем.
-        </div>
-        <div className="heart pop" style={d(2)}>
-          ♥
         </div>
       </div>
     ),

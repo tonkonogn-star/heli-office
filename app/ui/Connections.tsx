@@ -34,7 +34,19 @@ export function ClaudeConnect() {
         <li>Готово: в любом чате Claude можно сказать «запиши полёт» или «кто мне должен» — всё попадёт сюда.</li>
       </ol>
       <p className="small muted" style={{ margin: 0 }}>
-        Адрес секретный, как пароль: не пересылай его никому.
+        Адрес секретный, как пароль: не пересылай его никому.{" "}
+        <button
+          className="btn ghost small"
+          style={{ padding: 0, minHeight: 0, textDecoration: "underline", color: "inherit" }}
+          onClick={async () => {
+            if (!confirm("Сменить адрес? Старый перестанет работать везде, где он подключён.")) return;
+            await api("/api/settings", { method: "POST", json: { rotateConnector: true } });
+            setUrl((await api("/api/settings")).connector);
+            toast("Адрес сменён — подключи новый в своём Claude");
+          }}
+        >
+          Сменить адрес
+        </button>
       </p>
     </>
   );

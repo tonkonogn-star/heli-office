@@ -1,5 +1,6 @@
 import { guard } from "@/lib/auth";
 import { getSetting, setSetting } from "@/lib/db";
+import crypto from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ export const GET = guard(async (req: Request) => {
 
 export const POST = guard(async (req: Request) => {
   const b = await req.json();
+  // новый секретный адрес: старый сразу перестаёт работать в любом Claude, где был подключён
+  if (b.rotateConnector) await setSetting("mcp_key", crypto.randomBytes(24).toString("hex"));
   if ("onboarded" in b) await setSetting("onboarded", !!b.onboarded);
   if (b.keys) {
     const k = (await getSetting<any>("keys")) || {};

@@ -5,9 +5,10 @@ import { FormSheet, FORMS } from "./Forms";
 import { Seg, Deals, Contracts, Docs, Tiles } from "./Shared";
 import type { Nav } from "./App";
 
-type Sub = "money" | "clients" | "flights" | "aircraft" | "deals" | "contracts" | "docs";
+type Sub = "money" | "finance" | "clients" | "flights" | "aircraft" | "deals" | "contracts" | "docs";
 const SUBS: [Sub, string][] = [
   ["money", "Счета"],
+  ["finance", "Финансы"],
   ["clients", "Клиенты"],
   ["flights", "Полёты"],
   ["aircraft", "Вертолёты"],
@@ -26,6 +27,7 @@ export default function Heli({ s, nav, go, reload }: { s: any; nav: Nav; go: (n:
       <div style={{ height: 14 }} />
       <Seg items={SUBS} value={sub} set={(v) => go({ tab: "heli", sub: v })} />
       {sub === "money" && <Money s={s} reload={reload} />}
+      {sub === "finance" && <Finance s={s} go={go} reload={reload} />}
       {sub === "clients" && <Clients s={s} reload={reload} />}
       {sub === "flights" && <Flights s={s} reload={reload} />}
       {sub === "aircraft" && <Aircraft s={s} reload={reload} />}
@@ -374,5 +376,108 @@ function HeliTiles({ s, go }: { s: any; go: (n: Nav) => void }) {
           : { label: "Налёт", value: `${hours.toFixed(1)} ч`, sub: "в этом месяце", go: { tab: "heli", sub: "flights" } },
       ]}
     />
+  );
+}
+
+/* Финансы: сколько приносит каждый вертолёт и клиент, окупаемость. */
+function Finance({ s, go, reload }: { s: any; go: (n: Nav) => void; reload: () => void }) {
+  const [cost, setCost] = useState(false);
+  const [open, setOpen] = useState<any>(null);
+  const A = s.finance.aircraft;
+  const C = s.finance.clients.filter((c: any) => c.revenue || c.debt);
+  const max = Math.max(1, ...C.map((c: any) => c.revenue));
+  return (
+    <>
+      <div className="row between">
+        <h2 style={{ marginTop: 6 }}>Вертолёты за 12 месяцев</h2>
+        <button className="btn small" disabled={!s.aircraft.length} onClick={() => setCost(true)}>
+          Расход по борту
+        </button>
+      </div>
+      <div className="panel list">
+        {A.length === 0 && <div className="empty">Добавь вертолёты во вкладке «Вертолёты» — здесь появится доход, расходы и окупаемость каждого.</div>}
+        {A.map((a: any) => (
+          <button key={a.id} className="item" style={{ display: "block" }} onClick={() => setOpen(a)}>
+            <div className="row between">
+              <div className="t">
+                {a.reg} <span className="muted">{a.model}</span>
+              </div>
+              <b className="num" style={{ color: a.profit < 0 ? "var(--red)" : undefined }}>
+                {a.profit >= 0 ? "+" : ""}
+                {money(Math.round(a.profit))}
+              </b>
+            </div>
+            <div className="s" style={{ margin: "3px 0 8px" }}>
+              доход {money(Math.round(a.revenue))} · расходы {money(Math.round(a.costs))}
+              {a.hours ? ` · ${a.hours.toFixed(1)} ч` : ""}
+              {a.perHour != null ? ` · ${money(Math.round(a.perHour))} за час` : ""}
+            </div>
+            {a.payback != null ? (
+              <>
+                <div className="progress">
+                  <div style={{ width: a.payback * 100 + "%" }} />
+                </div>
+                <div className="s" style={{ marginTop: 5 }}>
+                  окупился на {Math.round(a.payback * 100)}% из {short(a.price)}
+                  {a.monthsLeft != null
+                    ? a.monthsLeft > 180
+                      ? " · полётами и хранением за 15 лет не окупится — нужны продажи долей"
+                      : ` · при нынешнем темпе ещё ≈ ${a.monthsLeft > 24 ? Math.round(a.monthsLeft / 12) + " г." : a.monthsLeft + " мес."}`
+                    : a.payback < 1
+                      ? " · пока не в плюсе — срок не посчитать"
+                      : ""}
+                </div>
+              </>
+            ) : (
+              <div className="s">Укажи цену покупки борта — посчитаю окупаемость.</div>
+            )}
+          </button>
+        ))}
+      </div>
+      {A.length > 0 && !A.some((a: any) => a.costs) && <p className="small muted">Расходов по бортам пока нет — без них прибыль равна доходу. Скажи помощнику «заправка YL-HCB 640 €», и он запишет.</p>}
+
+      <h2>Клиенты за 12 месяцев</h2>
+      <div className="panel list">
+        {C.length === 0 && <div className="empty">Когда появятся полёты и счета, здесь будет видно, кто сколько приносит и как платит.</div>}
+        {C.map((c: any) => (
+          <div key={c.id} className="item" style={{ display: "block", cursor: "default" }}>
+            <div className="row between">
+              <div className="t">{c.name}</div>
+              <b className="num">{money(Math.round(c.revenue), c.currency)}</b>
+            </div>
+            <div className="progress" style={{ margin: "7px 0 6px", background: "transparent" }}>
+              <div style={{ width: (c.revenue / max) * 100 + "%", background: "var(--ink)" }} />
+            </div>
+            <div className="s">
+              {[c.hours ? `${c.hours.toFixed(1)} ч` : null, c.storage ? `хранение ${short(c.storage)}` : null, c.maintenance ? `ТО ${short(c.maintenance)}` : null, `${Math.round(c.share * 100)}% дохода`].filter(Boolean).join(" · ")}
+            </div>
+            <div className="s">
+              оплачено {money(Math.round(c.paid), c.currency)}
+              {c.debt ? ` · должен ${money(Math.round(c.debt), c.currency)}` : ""}
+              {c.pay_days != null ? ` · платит за ${c.pay_days} дн.` : ""}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="small muted">Доход — по начислениям: полёты, хранение и обслуживание, выставленные и ещё нет.</p>
+      <button className="btn" style={{ marginTop: 4 }} onClick={() => go({ tab: "chat", thread: "a:finance", draft: "Разбери финансы Heliclub: какой вертолёт и какой клиент приносят больше всего, где теряю деньги." })}>
+        Разобрать с помощником «Финансы»
+      </button>
+      {cost && <FormSheet title="Расход по вертолёту" tool="add_aircraft_cost" fields={FORMS.aircraftCost(s)} initial={{ aircraft: s.aircraft[0]?.id, kind: "Топливо", day: todayIso() }} onClose={() => setCost(false)} done={reload} />}
+      {open && (
+        <Sheet title={`${open.reg} — расходы за год`} onClose={() => setOpen(null)}>
+          <div className="panel list">
+            {open.costBreakdown.length === 0 && <div className="empty">Расходов не записано.</div>}
+            {open.costBreakdown.map((c: any) => (
+              <div key={c.kind} className="item" style={{ cursor: "default" }}>
+                <div className="grow">{c.kind}</div>
+                <span className="num">{money(Math.round(c.sum))}</span>
+              </div>
+            ))}
+          </div>
+          {open.monthly ? <p className="small muted">Средняя прибыль за последние полгода: {money(Math.round(open.monthly))} в месяц.</p> : null}
+        </Sheet>
+      )}
+    </>
   );
 }

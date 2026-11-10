@@ -111,6 +111,18 @@ create table if not exists labs (
   ref_low numeric, ref_high numeric, lab text not null default '', doc_id text, note text not null default '', created_at timestamptz not null default now()
 );
 create index if not exists labs_test on labs(lower(test), day);
+alter table aircraft add column if not exists purchase_price numeric;
+alter table aircraft add column if not exists purchase_date date;
+create table if not exists aircraft_costs (
+  id text primary key, aircraft_id text not null references aircraft(id) on delete cascade, kind text not null default 'Другое', title text not null,
+  amount numeric not null default 0, day date not null default current_date, created_at timestamptz not null default now()
+);
+alter table sites add column if not exists city text not null default '';
+alter table sites add column if not exists area_m2 numeric;
+create table if not exists comps (
+  id text primary key, site_id text not null references sites(id) on delete cascade, title text not null, url text not null default '',
+  price numeric, area_m2 numeric, status text not null default 'в продаже', note text not null default '', day date not null default current_date
+);
 create table if not exists facts (id bigserial primary key, text text not null, created_at timestamptz not null default now());
 `;
 

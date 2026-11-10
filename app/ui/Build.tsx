@@ -176,6 +176,8 @@ function Site({ s, site, back, go, reload }: { s: any; site: any; back: () => vo
           </div>
         ))}
       </div>
+      <Market s={s} site={site} go={go} />
+
       <button className="btn" style={{ marginTop: 12 }} onClick={() => go({ tab: "chat", thread: "a:build" })}>
         Спросить помощника «Стройка»
       </button>
@@ -202,5 +204,71 @@ function BuildTiles({ s, go }: { s: any; go: (n: Nav) => void }) {
         { label: "Не оплачено", value: short(unpaid), sub: "подрядчикам", tone: unpaid ? "amber" : undefined, go: { tab: "build", id: one } },
       ]}
     />
+  );
+}
+
+/* Рынок: похожие дома рядом — цена за м² против нашего плана продажи. */
+function Market({ s, site, go }: { s: any; site: any; go: (n: Nav) => void }) {
+  const m = s.market?.[site.id];
+  const where = site.city || site.address;
+  const ask = () =>
+    go({
+      tab: "chat",
+      thread: "a:flip",
+      draft: `Собери рынок для объекта «${site.name}»${where ? ` (${where})` : ""}${site.area_m2 ? `, ${site.area_m2} м²` : ""}: похожие дома в продаже и проданные рядом, с ценой, площадью и ссылками. Сохрани их и скажи, где мой план продажи${site.sale_target ? ` ${site.sale_target}` : ""} относительно рынка.`,
+    });
+  return (
+    <>
+      <div className="row between">
+        <h2>Рынок рядом</h2>
+        <button className="btn small" onClick={ask}>
+          {m?.comps?.length ? "Обновить" : "Собрать данные"}
+        </button>
+      </div>
+      {!m?.comps?.length ? (
+        <div className="panel">
+          <div className="empty">
+            {where ? `Помощник найдёт похожие дома в продаже и проданные в районе «${where}» — с ценой за м² и ссылками на объявления.` : "Укажи город и площадь объекта («Изменить» вверху) — и помощник соберёт похожие дома с ценой за м²."}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="tiles" style={{ marginTop: 0 }}>
+            <div className="tile">
+              <span className="l">Рынок, м²</span>
+              <b className="num">{m.median ? short(Math.round(m.median)) : "—"}</b>
+              <span className="s">медиана · {m.comps.length}</span>
+            </div>
+            <div className="tile">
+              <span className="l">Разброс</span>
+              <b className="num">{m.min ? `${(m.min / 1000).toFixed(1).replace(".", ",")}–${(m.max / 1000).toFixed(1).replace(".", ",")}к` : "—"}</b>
+              <span className="s">€ за м²</span>
+            </div>
+            <div className={"tile" + (m.diff != null ? (m.diff > 0.1 ? " red" : m.diff < -0.05 ? " go" : "") : "")}>
+              <span className="l">Наш план, м²</span>
+              <b className="num">{m.ours ? short(Math.round(m.ours)) : "—"}</b>
+              <span className="s">{m.diff != null ? `${m.diff > 0 ? "+" : ""}${Math.round(m.diff * 100)}% к рынку` : "нужна площадь и цена"}</span>
+            </div>
+          </div>
+          <div className="panel list" style={{ marginTop: 10 }}>
+            {m.comps.slice(0, 8).map((c: any) => (
+              <a key={c.id} className="item" href={c.url || undefined} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                <div className="grow">
+                  <div className="t">{c.title}</div>
+                  <div className="s">
+                    {[c.area_m2 ? `${Number(c.area_m2)} м²` : null, c.status, c.note].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+                <div className="right">
+                  <div className="num">{c.price ? short(c.price) : "—"}</div>
+                  {c.price && c.area_m2 ? <div className="s num">{short(Math.round(Number(c.price) / Number(c.area_m2)))}/м²</div> : null}
+                </div>
+              </a>
+            ))}
+          </div>
+          <p className="small muted">Обновлено {day(m.updated, true)}. Цены объявлений — не цены сделок.</p>
+        </>
+      )}
+    </>
   );
 }

@@ -3,6 +3,7 @@ import * as ops from "./ops";
 import { forecast } from "./weather";
 import { whoopDays, whoopStatus } from "./whoop";
 import { payPayment, recordLabs, labTrends, CATEGORIES } from "./personal";
+import { clientFinance, aircraftFinance, siteMarket } from "./finance";
 
 const S = (description: string, extra: Record<string, unknown> = {}) => ({ type: "string", description, ...extra });
 const N = (description: string) => ({ type: "number", description });
@@ -38,8 +39,14 @@ export const TOOLS = [
   {
     name: "save_aircraft",
     description: "Вертолёт: борт, модель, налёт, когда ТО (по часам и по дате), страховка, ARC. Без id — новый.",
-    input_schema: { type: "object", properties: { id: S("id"), reg: S("Бортовой номер"), model: S("Модель, например Bell 505"), hours: N("Налёт сейчас"), next_service_hours: N("ТО на налёте"), next_service_date: S("ТО по дате YYYY-MM-DD"), insurance_until: S("YYYY-MM-DD"), arc_until: S("YYYY-MM-DD"), notes: S("Заметки") } },
+    input_schema: { type: "object", properties: { id: S("id"), reg: S("Бортовой номер"), model: S("Модель, например Bell 505"), hours: N("Налёт сейчас"), next_service_hours: N("ТО на налёте"), next_service_date: S("ТО по дате YYYY-MM-DD"), insurance_until: S("YYYY-MM-DD"), arc_until: S("YYYY-MM-DD"), purchase_price: N("Цена покупки — для окупаемости"), purchase_date: S("Дата покупки YYYY-MM-DD"), notes: S("Заметки") } },
   },
+  {
+    name: "add_aircraft_cost",
+    description: "Расход на вертолёт: топливо, ТО, запчасти, страховка, ангар, пилот, сборы, лизинг. Нужен, чтобы считать прибыль и окупаемость каждого борта.",
+    input_schema: { type: "object", properties: { aircraft: S("Борт"), kind: S("Топливо, ТО, Запчасти, Страховка, Ангар, Пилот, Сборы, Лизинг, Другое"), title: S("Что именно"), amount: N("Сумма"), day: S("YYYY-MM-DD") }, required: ["aircraft", "amount"] },
+  },
+  { name: "finance_report", description: "Финансы Heliclub за 12 месяцев: по каждому клиенту (доход, часы, оплачено, долг, сколько дней платит) и по каждому вертолёту (доход, расходы, прибыль, прибыль на лётный час, окупаемость от цены покупки).", input_schema: { type: "object", properties: {} } },
   { name: "set_pilot", description: "Документы пилота: сроки лицензии и медкомиссии.", input_schema: { type: "object", properties: { license_type: S("Тип лицензии"), license_until: S("YYYY-MM-DD"), medical_until: S("YYYY-MM-DD"), notes: S("Заметки") } } },
   {
     name: "save_task",
@@ -60,7 +67,7 @@ export const TOOLS = [
   {
     name: "save_site",
     description: "Объект стройки или флип-хауса: адрес, бюджет, цена покупки, план продажи, сроки. Без id — новый.",
-    input_schema: { type: "object", properties: { id: S("id"), name: S("Название"), address: S("Адрес"), status: S("Оценка, Покупка, Стройка, Продажа, Продан"), budget: N("Бюджет ремонта"), buy_price: N("Цена покупки"), sale_target: N("Цена продажи (план)"), start: S("YYYY-MM-DD"), finish_plan: S("YYYY-MM-DD"), notes: S("Заметки") } },
+    input_schema: { type: "object", properties: { id: S("id"), name: S("Название"), address: S("Адрес"), status: S("Оценка, Покупка, Стройка, Продажа, Продан"), budget: N("Бюджет ремонта"), buy_price: N("Цена покупки"), city: S("Город или район — для рынка"), area_m2: N("Площадь, м²"), sale_target: N("Цена продажи (план)"), start: S("YYYY-MM-DD"), finish_plan: S("YYYY-MM-DD"), notes: S("Заметки") } },
   },
   { name: "site_get", description: "Объект целиком: этапы, расходы, сколько потрачено, прогресс.", input_schema: { type: "object", properties: { site: S("id или название") }, required: ["site"] } },
   {
@@ -73,6 +80,20 @@ export const TOOLS = [
     description: "Расход по объекту: материалы, работы, счёт подрядчика. paid=false — ещё не оплачено.",
     input_schema: { type: "object", properties: { site: S("Объект"), title: S("За что"), vendor: S("Кому"), amount: N("Сумма"), day: S("YYYY-MM-DD"), paid: B("Оплачено") }, required: ["site", "title", "amount"] },
   },
+  {
+    name: "save_comps",
+    description: "Сохранить похожие объекты на рынке рядом с домом Максима (найденные через web_search): название, ссылка, цена, площадь, статус (в продаже / продан). Перед сохранением старые записи по объекту можно заменить (replace=true).",
+    input_schema: {
+      type: "object",
+      properties: {
+        site: S("Объект Максима"),
+        replace: B("Заменить прошлую выборку"),
+        items: { type: "array", items: { type: "object", properties: { title: S("Что за объект: тип, район"), url: S("Ссылка на объявление"), price: N("Цена"), area_m2: N("Площадь, м²"), status: S("в продаже или продан"), note: S("Состояние, год, участок") }, required: ["title"] } },
+      },
+      required: ["site", "items"],
+    },
+  },
+  { name: "market_get", description: "Рынок вокруг объекта: сохранённые похожие объекты, медиана цены за м², где наш план продажи относительно рынка.", input_schema: { type: "object", properties: { site: S("Объект") }, required: ["site"] } },
   { name: "audit", description: "Контролёр: всё, что не сходится — просроченные оплаты, забытые начисления, дубли, перерасход бюджета, просроченные этапы, сроки ТО, страховок, лицензии.", input_schema: { type: "object", properties: {} } },
   {
     name: "set_company",
@@ -155,9 +176,9 @@ export async function runTool(name: string, i: any): Promise<{ result: string; c
       const ex = (await q<any>("select * from aircraft where id=$1", [id]))[0] || {};
       const v = { ...ex, ...Object.fromEntries(Object.entries(i).filter(([, x]) => x !== undefined)) };
       await q(
-        `insert into aircraft(id,reg,model,hours,next_service_hours,next_service_date,insurance_until,arc_until,notes) values($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         on conflict(id) do update set reg=$2,model=$3,hours=$4,next_service_hours=$5,next_service_date=$6,insurance_until=$7,arc_until=$8,notes=$9`,
-        [id, v.reg || "?", v.model || "", Number(v.hours) || 0, v.next_service_hours ?? null, d(v.next_service_date) ?? null, d(v.insurance_until) ?? null, d(v.arc_until) ?? null, v.notes || ""],
+        `insert into aircraft(id,reg,model,hours,next_service_hours,next_service_date,insurance_until,arc_until,notes,purchase_price,purchase_date) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         on conflict(id) do update set reg=$2,model=$3,hours=$4,next_service_hours=$5,next_service_date=$6,insurance_until=$7,arc_until=$8,notes=$9,purchase_price=$10,purchase_date=$11`,
+        [id, v.reg || "?", v.model || "", Number(v.hours) || 0, v.next_service_hours ?? null, d(v.next_service_date) ?? null, d(v.insurance_until) ?? null, d(v.arc_until) ?? null, v.notes || "", v.purchase_price ?? null, d(v.purchase_date) ?? null],
       );
       return { result: `Вертолёт сохранён: ${id} ${v.reg}.`, changed: true };
     }
@@ -207,9 +228,9 @@ export async function runTool(name: string, i: any): Promise<{ result: string; c
       const ex = (await q<any>("select * from sites where id=$1", [id]))[0] || {};
       const v = { ...ex, ...Object.fromEntries(Object.entries(i).filter(([, x]) => x !== undefined)) };
       await q(
-        `insert into sites(id,name,address,status,budget,buy_price,sale_target,start,finish_plan,notes) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-         on conflict(id) do update set name=$2,address=$3,status=$4,budget=$5,buy_price=$6,sale_target=$7,start=$8,finish_plan=$9,notes=$10`,
-        [id, v.name || "Объект", v.address || "", v.status || "Стройка", Number(v.budget) || 0, v.buy_price ?? null, v.sale_target ?? null, d(v.start) ?? null, d(v.finish_plan) ?? null, v.notes || ""],
+        `insert into sites(id,name,address,status,budget,buy_price,sale_target,start,finish_plan,notes,city,area_m2) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         on conflict(id) do update set name=$2,address=$3,status=$4,budget=$5,buy_price=$6,sale_target=$7,start=$8,finish_plan=$9,notes=$10,city=$11,area_m2=$12`,
+        [id, v.name || "Объект", v.address || "", v.status || "Стройка", Number(v.budget) || 0, v.buy_price ?? null, v.sale_target ?? null, d(v.start) ?? null, d(v.finish_plan) ?? null, v.notes || "", v.city || "", v.area_m2 ?? null],
       );
       return { result: `Объект сохранён: ${id} ${v.name}.`, changed: true };
     }
@@ -240,6 +261,32 @@ export async function runTool(name: string, i: any): Promise<{ result: string; c
       await q("insert into expenses(id,site_id,title,vendor,amount,day,paid) values($1,$2,$3,$4,$5,$6,$7)", [id, s.id, i.title, i.vendor || "", Number(i.amount) || 0, d(i.day) || today(), !!i.paid]);
       const sum = await ops.siteSummary(s.id);
       return { result: `Расход записан: ${money(i.amount)} — ${i.title}. По объекту потрачено ${money(sum!.spent)} из ${money(sum!.budget)}.`, changed: true };
+    }
+    case "add_aircraft_cost": {
+      const a = (await q<any>("select * from aircraft where id=$1 or lower(reg)=lower($1) limit 1", [i.aircraft]))[0];
+      if (!a) return { result: `Не нашёл борт «${i.aircraft}» — сначала добавь его.` };
+      await q("insert into aircraft_costs(id,aircraft_id,kind,title,amount,day) values($1,$2,$3,$4,$5,$6)", [newId("ac"), a.id, i.kind || "Другое", i.title || i.kind || "Расход", Number(i.amount) || 0, d(i.day) || today()]);
+      return { result: `Расход по ${a.reg} записан: ${money(i.amount)}.`, changed: true };
+    }
+    case "finance_report":
+      return { result: JSON.stringify({ clients: await clientFinance(), aircraft: await aircraftFinance() }) };
+    case "save_comps": {
+      const site = await ops.findSite(i.site);
+      if (!site) return { result: "Не нашёл объект." };
+      if (i.replace) await q("delete from comps where site_id=$1", [site.id]);
+      let k = 0;
+      for (const c of i.items || []) {
+        if (!c?.title) continue;
+        await q("insert into comps(id,site_id,title,url,price,area_m2,status,note) values($1,$2,$3,$4,$5,$6,$7,$8)", [newId("m"), site.id, c.title, c.url || "", c.price ?? null, c.area_m2 ?? null, c.status || "в продаже", c.note || ""]);
+        k++;
+      }
+      const m = await siteMarket(site.id);
+      return { result: `Сохранено объектов: ${k}. Медиана ${m.median ? money(Math.round(m.median)) + "/м²" : "—"}${m.ours ? `, наш план ${money(Math.round(m.ours))}/м²` : ""}.`, changed: k > 0 };
+    }
+    case "market_get": {
+      const site = await ops.findSite(i.site);
+      if (!site) return { result: "Не нашёл объект." };
+      return { result: JSON.stringify({ site: { name: site.name, city: site.city, area_m2: site.area_m2, sale_target: site.sale_target }, ...(await siteMarket(site.id)) }) };
     }
     case "audit": {
       const issues = await ops.audit();

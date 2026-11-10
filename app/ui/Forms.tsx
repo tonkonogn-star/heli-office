@@ -140,6 +140,8 @@ export const FORMS = {
   site: (): F[] => [
     { k: "name", label: "Название" },
     { k: "address", label: "Адрес" },
+    { k: "city", label: "Город, район (для рынка)", half: true },
+    { k: "area_m2", label: "Площадь, м²", type: "number", half: true },
     { k: "status", label: "Статус", type: "select", options: ["Оценка", "Покупка", "Стройка", "Продажа", "Продан"].map((x) => [x, x] as [string, string]) },
     { k: "buy_price", label: "Цена покупки", type: "number", half: true },
     { k: "budget", label: "Бюджет ремонта", type: "number", half: true },
@@ -171,7 +173,16 @@ export const FORMS = {
     { k: "next_service_date", label: "ТО по дате", type: "date", half: true },
     { k: "insurance_until", label: "Страховка до", type: "date", half: true },
     { k: "arc_until", label: "ARC до", type: "date" },
+    { k: "purchase_price", label: "Цена покупки (для окупаемости)", type: "number", half: true },
+    { k: "purchase_date", label: "Куплен", type: "date", half: true },
     { k: "notes", label: "Заметки", type: "area" },
+  ],
+  aircraftCost: (s: any): F[] => [
+    { k: "aircraft", label: "Борт", type: "select", options: s.aircraft.map((a: any) => [a.id, a.reg] as [string, string]) },
+    { k: "kind", label: "Что", type: "select", options: ["Топливо", "ТО", "Запчасти", "Страховка", "Ангар", "Пилот", "Сборы", "Лизинг", "Другое"].map((x) => [x, x] as [string, string]) },
+    { k: "title", label: "Подробнее", placeholder: "100-часовое ТО" },
+    { k: "amount", label: "Сумма", type: "number", half: true },
+    { k: "day", label: "Дата", type: "date", half: true },
   ],
   pilot: (): F[] => [
     { k: "license_type", label: "Лицензия", placeholder: "PPL(H) / CPL(H)" },

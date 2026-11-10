@@ -61,6 +61,18 @@ export const SLIDES: { big: string; p: string; art: React.ReactNode }[] = [
     ),
   },
   {
+    big: "Цифры, которые видно",
+    p: "Сколько приносит каждый клиент и каждый вертолёт, сколько на него уходит и когда он окупится. А по стройке — где твоя цена продажи относительно рынка вокруг дома.",
+    art: (
+      <svg viewBox="0 0 300 160" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".9">
+        <path d="M30 130h240" />
+        <path d="M40 120l50-30 40 18 50-50 40 14 40-40" strokeWidth="3" />
+        <circle cx="260" cy="32" r="6" fill="currentColor" />
+        <path d="M40 40h80M40 58h50" opacity=".6" />
+      </svg>
+    ),
+  },
+  {
     big: "Утро пилота",
     p: "Ветер, порывы и облачность по Windy, твой сон и восстановление по WHOOP — и подсказка, стоит ли сегодня лететь самому.",
     art: (

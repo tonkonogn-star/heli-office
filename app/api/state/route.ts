@@ -4,6 +4,7 @@ import { overview, company } from "@/lib/ops";
 import { whoopStatus, whoopDays, syncIfStale } from "@/lib/whoop";
 import { apiKey } from "@/lib/chat";
 import { labTrends } from "@/lib/personal";
+import { clientFinance, aircraftFinance, siteMarket } from "@/lib/finance";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,9 @@ export const GET = guard(async () => {
     getSetting("instagram"),
   ]);
   const demo = await getSetting("demo");
+  const [finC, finA] = await Promise.all([clientFinance(), aircraftFinance()]);
+  const market: Record<string, any> = {};
+  for (const x of sites) market[x.id] = await siteMarket(x.id);
   const [payments, spends, labs] = await Promise.all([
     q<any>("select * from payments where active order by next_due nulls last, title"),
     q<any>("select * from payment_log where day >= date_trunc('month', current_date) - interval '2 months' order by day desc, id desc"),
@@ -46,6 +50,8 @@ export const GET = guard(async () => {
     payments,
     spends,
     labs,
+    finance: { clients: finC, aircraft: finA },
+    market,
     sites,
     stages,
     expenses,

@@ -87,7 +87,7 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
   },
   {
     title: "Счета я соберу сам",
-    text: "Хранение — 1-го числа, полёты и работы — сразу после события. Тебе остаётся проверить и нажать «Отправить».",
+    text: "Хранение — 1-го числа, полёты и работы — сразу после события. Тебе остаётся проверить и сказать «отправь» — отправлю сам.",
     scene: () => (
       <div className="sc-invoice">
         <div className="paper">
@@ -111,6 +111,32 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
         </div>
         <div className="stamp pop" style={d(2.6)}>
           Черновик готов
+        </div>
+      </div>
+    ),
+  },
+  {
+    title: "Деньги приходят быстрее",
+    text: "Пришли выписку банка — я сам отмечу, кто заплатил. В счёте — ссылка «оплатить картой». Радар видит, когда борт летал, и напомнит, если полёт не записан. А раз в месяц — выгрузка бухгалтеру одним файлом.",
+    scene: () => (
+      <div className="sc-mail">
+        {[
+          ["Выписка банка", "SEB · 3 поступления", "2 счёта оплачены"],
+          ["Счёт 2026-014", "Baltic Charter · 3 120 €", "Оплачен картой"],
+          ["Радар · YL-HCB", "10.11 · 14:02–15:10", "Полёт не записан"],
+        ].map(([from, subj, chip], k) => (
+          <div key={from} className="mrow slide-in" style={d(0.2 + k * 0.5)}>
+            <div>
+              <b>{from}</b>
+              <span>{subj}</span>
+            </div>
+            <i className="chip pop" style={d(0.8 + k * 0.5)}>
+              {chip}
+            </i>
+          </div>
+        ))}
+        <div className="saved rise" style={d(2.6)}>
+          выгрузка бухгалтеру — одной кнопкой
         </div>
       </div>
     ),
@@ -224,10 +250,10 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
   },
   {
     title: "Подключай, что хочешь",
-    text: "Gemini и ChatGPT — для второго мнения перед крупным решением. WHOOP, Instagram, Windy, календарь телефона. А через Make — вообще что угодно: Telegram, таблицы, бухгалтера. Всё в «Ещё → Подключения», и всё по желанию.",
+    text: "Gemini и ChatGPT — второе мнение перед крупным решением. WHOOP, Instagram, Windy, календарь телефона. А с Make я отправляю сам, куда скажешь: «счёт Петрову — на почту», «договор — на подпись». Всё в «Ещё → Подключения», всё по желанию.",
     scene: () => (
       <div className="sc-team">
-        {["Claude", "Gemini", "ChatGPT", "Make", "WHOOP", "Windy", "Instagram", "Календарь", "Telegram"].map((n, k) => (
+        {["Claude", "Gemini", "ChatGPT", "Make", "Stripe", "WHOOP", "Windy", "Instagram", "Календарь"].map((n, k) => (
           <span key={n} className="pill2 pop" style={d(0.15 + k * 0.15)}>
             {n}
           </span>

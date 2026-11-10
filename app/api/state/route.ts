@@ -1,6 +1,7 @@
 import { guard } from "@/lib/auth";
 import { q, getSetting } from "@/lib/db";
 import { overview, company } from "@/lib/ops";
+import { radarPending } from "@/lib/extra";
 import { whoopStatus, whoopDays, syncIfStale } from "@/lib/whoop";
 import { apiKey } from "@/lib/chat";
 import { labTrends } from "@/lib/personal";
@@ -68,6 +69,8 @@ export const GET = guard(async () => {
     instagram: { connected: !!(insta as any)?.connected, handle: (insta as any)?.handle || "" },
     claude: { hasKey: !!(await apiKey()), health },
     usage,
+    radar: await radarPending().catch(() => []),
+    stripe: !!((await getSetting<any>("keys"))?.stripe || process.env.STRIPE_SECRET_KEY),
     demo: !!demo,
   });
 });

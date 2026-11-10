@@ -12,12 +12,14 @@
 - Next.js 15 (App Router), React 19, TypeScript. Postgres через `pg` (`lib/db.ts`, схема создаётся сама — новые колонки добавлять `alter table … add column if not exists` в SCHEMA).
 - `lib/tools.ts` — все действия (их же вызывают чат, экраны через `/api/data` и коннектор Claude `/api/mcp/[key]`). Новая возможность = новый инструмент здесь + при нужде экран в `app/ui/`.
 - `lib/agents.ts` — характер помощника и специалисты. `lib/chat.ts` — Claude API с кэшем промптов.
-- `lib/ext.ts` — Gemini, ChatGPT (второе мнение), Make (события наружу). `/api/hook/[key]` — вход для Make.
+- `lib/ext.ts` — Gemini и ChatGPT (второе мнение, инструмент second_opinion).
+- `lib/extra.ts` — отправка через Make по команде Максима (send), подписанные ссылки на файлы `/api/share/...`, сверка выписки (reconcile), Stripe-ссылки на оплату и `/api/stripe`, радар OpenSky (radar, проверка в утреннем расписании), выгрузка бухгалтеру `/api/export`.
+- `/api/hook/[key]` — вход для Make: {text} как сообщение помощнику или {tool, input}.
 - `app/ui/` — экраны: Today, Heli, Build, Personal, Chat, More, Connections, Onboarding, Reel.
 - Стиль: чёрно-белый, Helvetica Neue, `app/globals.css`. Приложение в первую очередь для iPhone (иконка на экране «Домой»).
 - Расписание — `vercel.json` (утренняя сводка, черновики счетов 1-го числа).
 
 ## Правила
-- Помощник никогда ничего не отправляет клиентам сам — только черновики.
+- Помощник отправляет что-либо только по прямой команде Максима и после его «да» на текст. Куда отправить, Максим говорит каждый раз сам.
 - Ключи и пароли не попадают в код и не отдаются наружу.
 - Перед отправкой: `npx tsc --noEmit` и `npx next build` без ошибок.

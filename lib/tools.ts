@@ -4,7 +4,8 @@ import { forecast } from "./weather";
 import { whoopDays, whoopStatus } from "./whoop";
 import { payPayment, recordLabs, labTrends, CATEGORIES } from "./personal";
 import { clientFinance, aircraftFinance, siteMarket } from "./finance";
-import { secondOpinion, toMake } from "./ext";
+import { secondOpinion } from "./ext";
+import * as extra from "./extra";
 
 const S = (description: string, extra: Record<string, unknown> = {}) => ({ type: "string", description, ...extra });
 const N = (description: string) => ({ type: "number", description });
@@ -12,6 +13,36 @@ const B = (description: string) => ({ type: "boolean", description });
 const SPACE = S("heli — Heliclub, build — стройка и флип-хаусы, general — личное: семья, здоровье, свои дела", { enum: ["heli", "build", "general"] });
 
 export const TOOLS = [
+  {
+    name: "send",
+    description: "Отправить что-то через Make — ТОЛЬКО когда Максим прямо велел отправить (кому и что). Каждый раз он сам говорит, куда: письмо клиенту или бухгалтеру, Telegram, WhatsApp, на подпись. Приложи файлы: счёт, договор, документ, выгрузку. Отправленный счёт сам станет «отправлен». Перед отправкой клиенту покажи текст и получи «да».",
+    input_schema: {
+      type: "object",
+      properties: {
+        channel: S("Куда: email, telegram, whatsapp, sign (на подпись), sheet (в таблицу) или другое, как сказал Максим"),
+        to: S("Кому: email, телефон, имя"),
+        subject: S("Тема письма"),
+        text: S("Текст сообщения"),
+        attach: { type: "array", items: { type: "object", properties: { kind: S("invoice, contract, doc, export", { enum: ["invoice", "contract", "doc", "export"] }), id: S("id или номер счёта; для export — месяц YYYY-MM") }, required: ["kind", "id"] } },
+      },
+      required: ["channel", "text"],
+    },
+  },
+  {
+    name: "reconcile",
+    description: "Сверить банковскую выписку со счетами: передай входящие платежи из выписки (PDF, CSV, скриншот, который прислал Максим). Сам отметит оплаченные счета и скажет, какие платежи непонятно за что. apply=false — только показать.",
+    input_schema: {
+      type: "object",
+      properties: {
+        payments: { type: "array", items: { type: "object", properties: { date: S("YYYY-MM-DD"), amount: N("Сумма прихода"), currency: S("Валюта"), payer: S("Плательщик"), reference: S("Назначение платежа") }, required: ["amount"] } },
+        apply: B("false — не отмечать, только показать"),
+      },
+      required: ["payments"],
+    },
+  },
+  { name: "pay_link", description: "Сделать ссылку на оплату счёта картой (Stripe). Когда клиент оплатит, счёт сам станет «оплачен». Нужен подключённый Stripe.", input_schema: { type: "object", properties: { invoice: S("id или номер счёта") }, required: ["invoice"] } },
+  { name: "file_link", description: "Ссылка на файл, которая открывается без пароля 30 дней: счёт, договор, документ или выгрузка для бухгалтера за месяц (kind export, id YYYY-MM).", input_schema: { type: "object", properties: { kind: S("invoice, contract, doc, export", { enum: ["invoice", "contract", "doc", "export"] }), id: S("id; для export — месяц YYYY-MM") }, required: ["kind"] } },
+  { name: "radar", description: "Полёты, которые увидели радары (OpenSky) по бортам с кодом транспондера, но которые ещё не записаны. Записал полёт через log_flight — отметь resolve=id (status logged); свой полёт без счёта или ошибка — status skip. sync=true — проверить радар сейчас.", input_schema: { type: "object", properties: { sync: B("Проверить сейчас"), resolve: S("id полёта радара"), status: S("logged или skip", { enum: ["logged", "skip"] }) } } },
   {
     name: "second_opinion",
     description: "Спросить второе мнение у Gemini и ChatGPT (если Максим подключил их ключи). Вызывай, когда он просит «спроси Gemini/ChatGPT», «собери совет», «что скажут другие», и сам — перед крупным решением: покупка борта или дома, большая сделка, спорный договор. Передай вопрос и короткий контекст с цифрами. Потом сведи мнения в один ответ.",
@@ -45,7 +76,7 @@ export const TOOLS = [
   {
     name: "save_aircraft",
     description: "Вертолёт: борт, модель, налёт, когда ТО (по часам и по дате), страховка, ARC. Без id — новый.",
-    input_schema: { type: "object", properties: { id: S("id"), reg: S("Бортовой номер"), model: S("Модель, например Bell 505"), hours: N("Налёт сейчас"), next_service_hours: N("ТО на налёте"), next_service_date: S("ТО по дате YYYY-MM-DD"), insurance_until: S("YYYY-MM-DD"), arc_until: S("YYYY-MM-DD"), purchase_price: N("Цена покупки — для окупаемости"), purchase_date: S("Дата покупки YYYY-MM-DD"), notes: S("Заметки") } },
+    input_schema: { type: "object", properties: { id: S("id"), reg: S("Бортовой номер"), model: S("Модель, например Bell 505"), hours: N("Налёт сейчас"), next_service_hours: N("ТО на налёте"), next_service_date: S("ТО по дате YYYY-MM-DD"), insurance_until: S("YYYY-MM-DD"), arc_until: S("YYYY-MM-DD"), purchase_price: N("Цена покупки — для окупаемости"), purchase_date: S("Дата покупки YYYY-MM-DD"), icao24: S("Код транспондера Mode S (ICAO24, 6 знаков hex, например 502c4f) — чтобы радар сам находил полёты"), notes: S("Заметки") } },
   },
   {
     name: "add_aircraft_cost",
@@ -139,17 +170,29 @@ export const TOOLS = [
 const d = (s: unknown) => (s === "" ? null : (s as string) ?? undefined);
 
 /** Выполняет инструмент. changed=true — данные поменялись, экраны надо обновить. */
-const MAKE_EVENT: Record<string, string> = { log_flight: "flight", draft_invoices: "invoices_drafted", invoice_status: "invoice_status", add_expense: "expense", save_task: "task" };
-
 export async function runTool(name: string, i: any): Promise<{ result: string; changed?: boolean }> {
-  const r = await runToolInner(name, i);
-  // событие уходит в Make, если Максим подключил свой сценарий
-  if (MAKE_EVENT[name] && r.changed) await toMake(MAKE_EVENT[name], { input: i, result: r.result });
-  return r;
-}
-
-async function runToolInner(name: string, i: any): Promise<{ result: string; changed?: boolean }> {
   switch (name) {
+    case "send":
+      return { result: await extra.makeSend(i), changed: true };
+    case "reconcile": {
+      const list = Array.isArray(i.payments) ? i.payments : [];
+      return { result: await extra.reconcile(list, i.apply !== false), changed: i.apply !== false };
+    }
+    case "pay_link":
+      return { result: "Ссылка на оплату картой: " + (await extra.payLink(i.invoice)) + "\nОна напечатана и в PDF счёта.", changed: true };
+    case "file_link": {
+      if (i.kind === "export") return { result: "Выгрузка (CSV для Excel, ссылка 30 дней): " + (await extra.shareLink("export", i.id || extra.lastMonth())) };
+      return { result: "Ссылка на файл (открывается без пароля 30 дней): " + (await extra.shareLink(i.kind, i.id)) };
+    }
+    case "radar": {
+      const sync = i.sync ? (await extra.syncRadar()) + "\n" : "";
+      if (i.resolve) {
+        await extra.radarResolve(i.resolve, i.status === "skip" ? "skip" : "logged");
+        return { result: sync + "Отмечено.", changed: true };
+      }
+      const p = await extra.radarPending();
+      return { result: sync + (p.map((r) => `${r.id}: ${r.reg} ${r.day} ${r.t1}–${r.t2}, ≈${r.hours} ч${r.dep || r.arr ? `, ${r.dep || "?"} → ${r.arr || "?"}` : ""}`).join("\n") || "Радар не видел незаписанных полётов.") };
+    }
     case "second_opinion":
       return { result: await secondOpinion(String(i.question || ""), String(i.context || "")) };
     case "save_client": {
@@ -193,9 +236,9 @@ async function runToolInner(name: string, i: any): Promise<{ result: string; cha
       const ex = (await q<any>("select * from aircraft where id=$1", [id]))[0] || {};
       const v = { ...ex, ...Object.fromEntries(Object.entries(i).filter(([, x]) => x !== undefined)) };
       await q(
-        `insert into aircraft(id,reg,model,hours,next_service_hours,next_service_date,insurance_until,arc_until,notes,purchase_price,purchase_date) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-         on conflict(id) do update set reg=$2,model=$3,hours=$4,next_service_hours=$5,next_service_date=$6,insurance_until=$7,arc_until=$8,notes=$9,purchase_price=$10,purchase_date=$11`,
-        [id, v.reg || "?", v.model || "", Number(v.hours) || 0, v.next_service_hours ?? null, d(v.next_service_date) ?? null, d(v.insurance_until) ?? null, d(v.arc_until) ?? null, v.notes || "", v.purchase_price ?? null, d(v.purchase_date) ?? null],
+        `insert into aircraft(id,reg,model,hours,next_service_hours,next_service_date,insurance_until,arc_until,notes,purchase_price,purchase_date,icao24) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         on conflict(id) do update set reg=$2,model=$3,hours=$4,next_service_hours=$5,next_service_date=$6,insurance_until=$7,arc_until=$8,notes=$9,purchase_price=$10,purchase_date=$11,icao24=$12`,
+        [id, v.reg || "?", v.model || "", Number(v.hours) || 0, v.next_service_hours ?? null, d(v.next_service_date) ?? null, d(v.insurance_until) ?? null, d(v.arc_until) ?? null, v.notes || "", v.purchase_price ?? null, d(v.purchase_date) ?? null, v.icao24 ? String(v.icao24).toLowerCase().trim() : null],
       );
       return { result: `Вертолёт сохранён: ${id} ${v.reg}.`, changed: true };
     }

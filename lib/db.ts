@@ -119,6 +119,13 @@ create table if not exists aircraft_costs (
 );
 alter table sites add column if not exists city text not null default '';
 alter table sites add column if not exists area_m2 numeric;
+alter table invoices add column if not exists pay_url text;
+alter table invoices add column if not exists pay_link_id text;
+alter table aircraft add column if not exists icao24 text;
+create table if not exists radar_flights (
+  id text primary key, aircraft_id text not null, first_seen timestamptz not null, last_seen timestamptz not null,
+  dep text not null default '', arr text not null default '', status text not null default 'new', created_at timestamptz not null default now()
+);
 create table if not exists comps (
   id text primary key, site_id text not null references sites(id) on delete cascade, title text not null, url text not null default '',
   price numeric, area_m2 numeric, status text not null default 'в продаже', note text not null default '', day date not null default current_date

@@ -175,6 +175,7 @@ export const FORMS = {
     { k: "arc_until", label: "ARC до", type: "date" },
     { k: "purchase_price", label: "Цена покупки (для окупаемости)", type: "number", half: true },
     { k: "purchase_date", label: "Куплен", type: "date", half: true },
+    { k: "icao24", label: "Код транспондера ICAO24 — радар сам найдёт полёты", placeholder: "например 502c4f" },
     { k: "notes", label: "Заметки", type: "area" },
   ],
   aircraftCost: (s: any): F[] => [

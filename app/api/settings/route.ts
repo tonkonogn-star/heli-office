@@ -1,7 +1,8 @@
 import { guard } from "@/lib/auth";
 import { getSetting, setSetting } from "@/lib/db";
 import crypto from "node:crypto";
-import { keyStatus, toMake } from "@/lib/ext";
+import { keyStatus } from "@/lib/ext";
+import { setupStripe } from "@/lib/extra";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export const GET = guard(async (req: Request) => {
     await setSetting("hook_key", hook);
   }
   const h = req.headers;
+  await saveOrigin(h);
   const host = h.get("x-forwarded-host") || h.get("host");
   const origin = `${h.get("x-forwarded-proto") || "https"}://${host}`;
   return Response.json({ connector: key ? `${origin}/api/mcp/${key}` : null, calendar: `webcal://${host}/api/cal/${cal}.ics`, calendarHttps: `${origin}/api/cal/${cal}.ics`,
@@ -28,8 +30,15 @@ export const GET = guard(async (req: Request) => {
   });
 });
 
+async function saveOrigin(h: Headers) {
+  const host = h.get("x-forwarded-host") || h.get("host");
+  const o = `${h.get("x-forwarded-proto") || "https"}://${host}`;
+  if ((await getSetting<string>("origin")) !== o) await setSetting("origin", o);
+}
+
 export const POST = guard(async (req: Request) => {
   const b = await req.json();
+  await saveOrigin(req.headers);
   // новый секретный адрес: старый сразу перестаёт работать в любом Claude, где был подключён
   if (b.rotateConnector) await setSetting("mcp_key", crypto.randomBytes(24).toString("hex"));
   if (b.rotateHook) await setSetting("hook_key", crypto.randomBytes(20).toString("hex"));
@@ -37,7 +46,6 @@ export const POST = guard(async (req: Request) => {
     const u = String(b.make || "").trim();
     if (u && !/^https:\/\/[^\s]+$/.test(u)) return Response.json({ ok: false, error: "Нужен адрес вебхука, начинается с https://" }, { status: 400 });
     await setSetting("make_hook", u || null);
-    if (u) await toMake("hello", { text: "Приложение подключено к Make." });
   }
   if (b.whoopClient) {
     const cur = (await getSetting<any>("whoop")) || {};
@@ -52,6 +60,15 @@ export const POST = guard(async (req: Request) => {
       else delete k[n];
     }
     await setSetting("keys", k);
+    if (b.keys.stripe) {
+      try {
+        await setupStripe();
+      } catch (e: any) {
+        delete k.stripe;
+        await setSetting("keys", k);
+        return Response.json({ ok: false, error: String(e?.message || e) }, { status: 400 });
+      }
+    }
   }
   if (b.instagram !== undefined) {
     const h = String(b.instagram || "").trim().replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "").replace(/\/.*$/, "");

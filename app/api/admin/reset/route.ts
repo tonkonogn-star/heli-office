@@ -6,6 +6,6 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const s = process.env.CRON_SECRET;
   if (!s || req.headers.get("authorization") !== `Bearer ${s}`) return new Response("forbidden", { status: 403 });
-  await q("truncate charges, invoices, flights, aircraft_costs, comps, aircraft, deals, contracts, stages, expenses, sites, tasks, documents, messages, facts, clients, payments, payment_log, labs, settings cascade");
+  await q("truncate charges, invoices, flights, aircraft_costs, comps, aircraft, deals, contracts, stages, expenses, sites, tasks, documents, messages, facts, clients, payments, payment_log, labs, radar_flights, settings cascade");
   return Response.json({ ok: true, note: "Пусто. Первый, кто откроет приложение, задаст пароль." });
 }

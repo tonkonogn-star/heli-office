@@ -104,6 +104,9 @@ export async function invoicePdf(id: string) {
             ],
           }
         : "",
+      inv.pay_url && inv.status !== "paid"
+        ? { margin: [0, 14, 0, 0], text: [{ text: "Pay online by card: ", color: GREY }, { text: inv.pay_url, link: inv.pay_url, color: "#0B5CAD", decoration: "underline" }] }
+        : "",
       inv.note ? { text: inv.note, margin: [0, 16, 0, 0], color: GREY } : "",
     ],
   };

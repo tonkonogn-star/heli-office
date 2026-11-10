@@ -249,6 +249,8 @@ export async function audit(): Promise<Issue[]> {
   for (const r of flightsNoCharge) out.push({ level: "amber", area: "Полёты", text: `Полёт ${fmtDay(r.day)} с ${r.name} (${r.hours} ч) не попал в счёт` });
   const pays = await q<any>("select title, amount, currency, next_due from payments where active and next_due <= current_date + 3 order by next_due");
   for (const r of pays) out.push({ level: r.next_due < t ? "red" : "amber", area: "Платежи", text: `${r.title}: ${money(r.amount, r.currency)} — ${r.next_due < t ? "просрочен с" : "до"} ${fmtDay(r.next_due)}` });
+  const radar = await q<any>("select a.reg, to_char(r.first_seen at time zone 'Europe/Riga','DD.MM') d, round(extract(epoch from (r.last_seen-r.first_seen))/3600.0,1)::float h from radar_flights r join aircraft a on a.id=r.aircraft_id where r.status='new' order by r.first_seen desc limit 5").catch(() => []);
+  for (const r of radar) out.push({ level: "amber", area: "Полёты", text: `Радар видел ${r.reg} в воздухе ${r.d}, ≈${r.h} ч — полёт не записан` });
   for (const r of noRate) out.push({ level: "amber", area: "Клиенты", text: `${r.name}: не заданы ставки — счёт не собрать` });
   return out;
 }

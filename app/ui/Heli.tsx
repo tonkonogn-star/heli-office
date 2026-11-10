@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { act, money, short, day, isPast, openFile, toast, Sheet, todayIso } from "./kit";
+import { useRef, useState } from "react";
+import { act, api, money, short, day, isPast, openFile, toast, Sheet, todayIso } from "./kit";
 import { FormSheet, FORMS } from "./Forms";
 import { Seg, Deals, Contracts, Docs, Tiles } from "./Shared";
 import type { Nav } from "./App";
@@ -26,7 +26,7 @@ export default function Heli({ s, nav, go, reload }: { s: any; nav: Nav; go: (n:
       <HeliTiles s={s} go={go} />
       <div style={{ height: 14 }} />
       <Seg items={SUBS} value={sub} set={(v) => go({ tab: "heli", sub: v })} />
-      {sub === "money" && <Money s={s} reload={reload} />}
+      {sub === "money" && <Money s={s} go={go} reload={reload} />}
       {sub === "finance" && <Finance s={s} go={go} reload={reload} />}
       {sub === "clients" && <Clients s={s} reload={reload} />}
       {sub === "flights" && <Flights s={s} reload={reload} />}
@@ -38,8 +38,25 @@ export default function Heli({ s, nav, go, reload }: { s: any; nav: Nav; go: (n:
   );
 }
 
-function Money({ s, reload }: { s: any; reload: () => void }) {
+function Money({ s, go, reload }: { s: any; go: (n: Nav) => void; reload: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [upl, setUpl] = useState(false);
+  const stRef = useRef<HTMLInputElement>(null);
+  const statement = async (list: FileList | null) => {
+    if (!list?.length) return;
+    setUpl(true);
+    try {
+      const fd = new FormData();
+      fd.set("space", "heli");
+      for (const f of Array.from(list)) fd.append("file", f);
+      const r = await api("/api/docs", { method: "POST", body: fd });
+      go({ tab: "chat", thread: "a:billing", files: r.docs, draft: "Сверь выписку со счетами: отметь оплаченные и скажи, что непонятно." });
+    } catch (e: any) {
+      toast(e.message);
+    } finally {
+      setUpl(false);
+    }
+  };
   const [inv, setInv] = useState<any>(null);
   const [all, setAll] = useState(false);
   const drafts = s.invoices.filter((i: any) => i.status === "draft");
@@ -78,6 +95,19 @@ function Money({ s, reload }: { s: any; reload: () => void }) {
           Хранение добавляется само 1-го числа. Полёты и работы — когда ты их записываешь. Счета остаются черновиками, пока ты их не проверишь.
         </p>
       </div>
+
+      <div className="btns" style={{ marginTop: 10 }}>
+        <button className="btn" disabled={upl} onClick={() => stRef.current?.click()}>
+          {upl ? "Загружаю…" : "Сверить выписку банка"}
+        </button>
+        <a className="btn" href="/api/export" download>
+          Выгрузка бухгалтеру
+        </a>
+        <input ref={stRef} type="file" multiple hidden accept="application/pdf,image/*,.csv,.xlsx,.xls,.txt" onChange={(e) => statement(e.target.files)} />
+      </div>
+      <p className="small muted" style={{ margin: "6px 4px 0" }}>
+        Выписка: PDF, CSV или скриншот — помощник сам отметит оплаченные счета. Выгрузка — счета, расходы стройки и платежи за прошлый месяц одним файлом для Excel.
+      </p>
 
       {drafts.length > 0 && (
         <>
@@ -159,7 +189,7 @@ function Money({ s, reload }: { s: any; reload: () => void }) {
         </>
       )}
 
-      {inv && <InvoiceSheet i={inv} onClose={() => setInv(null)} reload={reload} />}
+      {inv && <InvoiceSheet i={inv} stripe={!!s.stripe} onClose={() => setInv(null)} reload={reload} />}
     </>
   );
 }
@@ -186,8 +216,28 @@ function InvRow({ i, onOpen }: { i: any; onOpen: () => void }) {
   );
 }
 
-function InvoiceSheet({ i, onClose, reload }: { i: any; onClose: () => void; reload: () => void }) {
+function InvoiceSheet({ i, stripe, onClose, reload }: { i: any; stripe: boolean; onClose: () => void; reload: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [payUrl, setPayUrl] = useState<string | null>(i.pay_url || null);
+  const makeLink = async () => {
+    setBusy(true);
+    try {
+      const r = await act("pay_link", { invoice: i.id });
+      const u = (r.result.match(/https?:\/\/\S+/) || [""])[0];
+      setPayUrl(u);
+      try {
+        await navigator.clipboard.writeText(u);
+        toast("Ссылка скопирована и напечатана в PDF");
+      } catch {
+        toast("Ссылка готова и напечатана в PDF");
+      }
+      reload();
+    } catch (e: any) {
+      toast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
   const set = async (status: string, msg: string) => {
     setBusy(true);
     try {
@@ -230,6 +280,17 @@ function InvoiceSheet({ i, onClose, reload }: { i: any; onClose: () => void; rel
           </button>
         )}
       </div>
+      {i.status !== "paid" &&
+        (payUrl ? (
+          <p className="small" style={{ wordBreak: "break-all" }}>
+            Оплата картой: <a href={payUrl} target="_blank" rel="noreferrer">{payUrl}</a> — когда клиент оплатит, счёт сам станет «оплачен».
+          </p>
+        ) : stripe ? (
+          <button className="btn" style={{ marginTop: 10 }} disabled={busy} onClick={makeLink}>
+            Ссылка на оплату картой
+          </button>
+        ) : null)}
+      <p className="small muted">Отправить: скажи помощнику «отправь счёт {i.number} на почту клиенту» — он покажет текст и отправит через Make.</p>
       <p className="small muted">Чтобы поправить строки, напиши помощнику «Счета»: «убери из счёта {i.number} замену фильтра» — он пересчитает итог.</p>
     </Sheet>
   );
@@ -283,8 +344,41 @@ function Clients({ s, reload }: { s: any; reload: () => void }) {
 
 function Flights({ s, reload }: { s: any; reload: () => void }) {
   const [add, setAdd] = useState(false);
+  const [rf, setRf] = useState<any>(null);
+  const skip = async (id: string) => {
+    await act("radar", { resolve: id, status: "skip" });
+    reload();
+  };
   return (
     <>
+      {s.radar?.length > 0 && (
+        <>
+          <h2 style={{ marginTop: 6 }}>Радар видел — записать?</h2>
+          <div className="panel list">
+            {s.radar.map((r: any) => (
+              <div key={r.id} className="item" style={{ cursor: "default" }}>
+                <div className="grow">
+                  <div className="t">
+                    {r.reg} · ≈{r.hours} ч
+                  </div>
+                  <div className="s">{[day(r.day), `${r.t1}–${r.t2}`, r.dep || r.arr ? `${r.dep || "?"} → ${r.arr || "?"}` : ""].filter(Boolean).join(" · ")}</div>
+                </div>
+                <div className="btns" style={{ flexWrap: "nowrap" }}>
+                  <button className="btn small primary" onClick={() => setRf(r)}>
+                    Записать
+                  </button>
+                  <button className="btn small ghost" onClick={() => skip(r.id)}>
+                    Не надо
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="small muted" style={{ margin: "6px 4px 0" }}>
+            Радары видят борт по транспондеру. Нажми «Записать», выбери клиента — полёт попадёт в счёт.
+          </p>
+        </>
+      )}
       <div className="row between">
         <h2 style={{ marginTop: 6 }}>Последние полёты</h2>
         <button className="btn small" onClick={() => setAdd(true)}>
@@ -307,6 +401,20 @@ function Flights({ s, reload }: { s: any; reload: () => void }) {
           </div>
         ))}
       </div>
+      {rf && (
+        <FormSheet
+          title="Полёт по радару"
+          tool="log_flight"
+          fields={FORMS.flight(s)}
+          initial={{ day: rf.day, hours: rf.hours, aircraft: rf.reg, route: rf.dep || rf.arr ? `${rf.dep || "?"} — ${rf.arr || "?"}` : "" }}
+          onClose={() => setRf(null)}
+          done={async () => {
+            await act("radar", { resolve: rf.id, status: "logged" });
+            reload();
+          }}
+          submit="Записать полёт"
+        />
+      )}
       {add && <FormSheet title="Полёт" tool="log_flight" fields={FORMS.flight(s)} initial={{ day: todayIso() }} onClose={() => setAdd(false)} done={reload} submit="Записать полёт" />}
     </>
   );

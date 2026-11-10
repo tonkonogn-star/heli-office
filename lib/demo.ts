@@ -131,6 +131,6 @@ export async function loadDemo() {
 
 /** Стереть пример (и вообще все данные), оставив пароль и адреса подключений. */
 export async function clearDemo() {
-  await q("truncate charges, invoices, flights, aircraft_costs, comps, aircraft, deals, contracts, stages, expenses, sites, tasks, documents, messages, facts, clients, payments, payment_log, labs cascade");
+  await q("truncate charges, invoices, flights, aircraft_costs, comps, aircraft, deals, contracts, stages, expenses, sites, tasks, documents, messages, facts, clients, payments, payment_log, labs, radar_flights cascade");
   await q("delete from settings where key in ('company','pilot','demo','api_usage')");
 }

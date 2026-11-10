@@ -80,7 +80,7 @@ type Row = { logo: string; name: string; what: string; state: string | null; act
 export function ConnList({ s, reload }: { s: any; reload: () => void }) {
   const [base, setBase] = useState(false);
   const [ig, setIg] = useState(false);
-  const [sheet, setSheet] = useState<null | "anthropic" | "gemini" | "openai" | "windy" | "make" | "whoop">(null);
+  const [sheet, setSheet] = useState<null | "anthropic" | "gemini" | "openai" | "windy" | "stripe" | "make" | "whoop" | "opensky">(null);
   const [c, setC] = useState<any>(null);
   const load = () => api("/api/settings").then(setC).catch(() => {});
   useEffect(() => {
@@ -171,12 +171,31 @@ export function ConnList({ s, reload }: { s: any; reload: () => void }) {
       ],
     ],
     [
-      "Автоматизация",
+      "Деньги и полёты",
+      [
+        {
+          logo: "€",
+          name: "Оплата картой (Stripe)",
+          what: "В каждом счёте — ссылка «оплатить картой». Клиент платит за минуту, а счёт сам становится «оплачен».",
+          state: k.stripe ? "Подключено " + k.stripe : null,
+          action: btn(k.stripe ? "Сменить" : "Подключить", () => setSheet("stripe")),
+        },
+        {
+          logo: "◎",
+          name: "Радар (OpenSky)",
+          what: "Радары видят борт по транспондеру. Летал — а полёт не записан? Утром помощник напомнит, останется выбрать клиента.",
+          state: k.opensky ? "Подключено" : null,
+          action: btn(k.opensky ? "Сменить" : "Подключить", () => setSheet("opensky")),
+        },
+      ],
+    ],
+    [
+      "Руки помощника",
       [
         {
           logo: "M",
           name: "Make",
-          what: "Связывает приложение с чем угодно: письма со счетами из Gmail — сюда, оплаченные счета — бухгалтеру, утренняя сводка — в Telegram.",
+          what: "Чтобы помощник сам отправлял, что ты скажешь: «счёт Петрову — на почту», «выгрузку — бухгалтеру», «договор Иванову — на подпись». Каждый раз — куда скажешь.",
           state: c?.make?.out ? "Подключён" : null,
           action: btn(c?.make?.out ? "Настроить" : "Подключить", () => setSheet("make")),
         },
@@ -212,6 +231,7 @@ export function ConnList({ s, reload }: { s: any; reload: () => void }) {
       {ig && <IgSheet cur={s.instagram.handle} onClose={() => setIg(false)} done={reload} />}
       {sheet && sheet in KEY_INFO && <KeySheet id={sheet as keyof typeof KEY_INFO} has={!!k[sheet]} onClose={() => setSheet(null)} done={done} />}
       {sheet === "make" && c && <MakeSheet c={c} onClose={() => setSheet(null)} done={done} />}
+      {sheet === "opensky" && <OpenSkySheet has={!!k.opensky} onClose={() => setSheet(null)} done={done} />}
       {sheet === "whoop" && c && <WhoopSheet redirect={c.whoopRedirect} onClose={() => setSheet(null)} done={done} />}
     </>
   );
@@ -258,6 +278,20 @@ const KEY_INFO = {
         </li>
         <li>«Create new secret key», скопируй и вставь сюда.</li>
         <li>Баланс пополняется там же, в Billing — это отдельно от подписки ChatGPT.</li>
+      </>
+    ),
+  },
+  stripe: {
+    title: "Оплата картой (Stripe)",
+    ph: "sk_live_… или rk_live_…",
+    ok: (v: string) => /^(sk|rk)_(live|test)_/.test(v),
+    how: (
+      <>
+        <li>
+          Открой <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer">Stripe → Developers → API keys</a> (если аккаунта нет — заведи на компанию, это бесплатно, Stripe берёт процент с платежа).
+        </li>
+        <li>Скопируй Secret key и вставь сюда.</li>
+        <li>Всё остальное приложение настроит само: в каждом счёте появится кнопка «Ссылка на оплату картой».</li>
       </>
     ),
   },
@@ -330,10 +364,11 @@ function Copy({ text }: { text: string }) {
 
 function MakeSheet({ c, onClose, done }: { c: any; onClose: () => void; done: () => void }) {
   const [v, setV] = useState("");
+  const [more, setMore] = useState(false);
   const save = async (val: string) => {
     try {
       await api("/api/settings", { method: "POST", json: { make: val } });
-      toast(val ? "Make подключён — туда ушло пробное событие" : "Make отключён");
+      toast(val ? "Make подключён" : "Make отключён");
       done();
       onClose();
     } catch (e: any) {
@@ -342,14 +377,16 @@ function MakeSheet({ c, onClose, done }: { c: any; onClose: () => void; done: ()
   };
   return (
     <Sheet title="Make" onClose={onClose}>
-      <p className="muted" style={{ marginTop: 0 }}>
-        <a href="https://www.make.com" target="_blank" rel="noreferrer">Make</a> — конструктор связок между сервисами. Бесплатного тарифа хватит. Связь работает в обе стороны.
+      <p style={{ marginTop: 0 }}>
+        Подключается один раз. Дальше ты просто говоришь помощнику, что и куда отправить, — каждый раз своё: «счёт Петрову — на почту», «выгрузку за октябрь — бухгалтеру», «договор Иванову — на подпись». Он покажет текст и после твоего «да» отправит.
       </p>
-      <h3 style={{ margin: "14px 0 6px" }}>Из приложения → в Make</h3>
+      <h3 style={{ margin: "14px 0 6px" }}>Как подключить</h3>
       <ol className="how small" style={{ marginTop: 0 }}>
-        <li>В Make создай сценарий, первым модулем — «Webhooks → Custom webhook», скопируй его адрес.</li>
-        <li>Вставь адрес сюда. Туда будут приходить события: полёт записан, черновики счетов готовы, счёт отправлен или оплачен, расход по стройке, новое дело, утренняя сводка.</li>
-        <li>Дальше в Make добавь, куда их нести: Telegram, Google Таблица, письмо бухгалтеру.</li>
+        <li>
+          Заведи аккаунт на <a href="https://www.make.com" target="_blank" rel="noreferrer">make.com</a> — бесплатного тарифа хватит.
+        </li>
+        <li>В своём Claude подключи Make (Настройки → Коннекторы) и скажи ему: «Настрой Make для моего Офиса: вебхук, который отправляет письма через мою почту, сообщения в Telegram и договоры на подпись». Он соберёт всё сам и даст адрес.</li>
+        <li>Вставь этот адрес сюда.</li>
       </ol>
       <input className="input" placeholder={c.make?.out ? "Подключено — вставь новый адрес, чтобы сменить" : "https://hook.eu1.make.com/…"} value={v} onChange={(e) => setV(e.target.value)} />
       <div className="btns" style={{ marginTop: 10 }}>
@@ -362,12 +399,61 @@ function MakeSheet({ c, onClose, done }: { c: any; onClose: () => void; done: ()
           </button>
         )}
       </div>
-      <h3 style={{ margin: "20px 0 6px" }}>Из Make → в приложение</h3>
-      <p className="small muted" style={{ marginTop: 0 }}>
-        В сценарии добавь модуль «HTTP → Make a request»: метод POST, тип JSON, адрес ниже. Тело <code>{'{"text": "…"}'}</code> — помощник прочитает как сообщение и сам разложит: например, письмо со счётом из Gmail или сообщение из Telegram.
-      </p>
-      <Copy text={c.make?.in || "…"} />
-      <p className="small muted">Адрес секретный, как пароль.</p>
+      <button className="btn ghost small" style={{ marginTop: 14, padding: 0 }} onClick={() => setMore(!more)}>
+        {more ? "Скрыть" : "Чтобы письма со счетами сами попадали сюда"}
+      </button>
+      {more && (
+        <>
+          <p className="small muted">Дай своему Claude этот адрес и скажи: «пересылай сюда письма со счетами и договорами из моей почты». Помощник прочитает их и сам разложит. Адрес секретный, как пароль.</p>
+          <Copy text={c.make?.in || "…"} />
+        </>
+      )}
+    </Sheet>
+  );
+}
+
+function OpenSkySheet({ has, onClose, done }: { has: boolean; onClose: () => void; done: () => void }) {
+  const [id, setId] = useState("");
+  const [sec, setSec] = useState("");
+  return (
+    <Sheet title="Радар (OpenSky)" onClose={onClose}>
+      <ol className="how small" style={{ marginTop: 0 }}>
+        <li>
+          Заведи бесплатный аккаунт на <a href="https://opensky-network.org" target="_blank" rel="noreferrer">opensky-network.org</a>.
+        </li>
+        <li>В профиле (Account → API Client) создай клиента и скопируй сюда Client ID и Client Secret.</li>
+        <li>У каждого борта в «Вертолёты» впиши код транспондера ICAO24 — 6 знаков, он есть в свидетельстве о регистрации или у техника.</li>
+      </ol>
+      <p className="small muted">Низко над землёй и вдали от приёмников радары видят не всё — так что это подстраховка, а не замена записи.</p>
+      <input className="input" placeholder="Client ID" value={id} onChange={(e) => setId(e.target.value)} />
+      <input className="input" style={{ marginTop: 8 }} placeholder="Client Secret" value={sec} onChange={(e) => setSec(e.target.value)} />
+      <div className="btns" style={{ marginTop: 12 }}>
+        <button
+          className="btn primary"
+          style={{ flex: 1 }}
+          disabled={!id.trim() || !sec.trim()}
+          onClick={async () => {
+            await api("/api/settings", { method: "POST", json: { keys: { opensky_id: id, opensky_secret: sec } } });
+            toast("Радар подключён — проверка каждое утро");
+            done();
+            onClose();
+          }}
+        >
+          Сохранить
+        </button>
+        {has && (
+          <button
+            className="btn"
+            onClick={async () => {
+              await api("/api/settings", { method: "POST", json: { keys: { opensky_id: "", opensky_secret: "" } } });
+              done();
+              onClose();
+            }}
+          >
+            Отключить
+          </button>
+        )}
+      </div>
     </Sheet>
   );
 }

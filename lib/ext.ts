@@ -11,6 +11,8 @@ export async function keys() {
     openai: k.openai || process.env.OPENAI_API_KEY || "",
     gemini: k.gemini || process.env.GEMINI_API_KEY || "",
     windy: process.env.WINDY_KEY || k.windy || "",
+    stripe: k.stripe || process.env.STRIPE_SECRET_KEY || "",
+    opensky: k.opensky_id || "",
   };
 }
 
@@ -18,7 +20,7 @@ export async function keys() {
 export async function keyStatus() {
   const k = await keys();
   const m = (s: string) => (s ? "…" + s.slice(-4) : "");
-  return { anthropic: m(k.anthropic), openai: m(k.openai), gemini: m(k.gemini), windy: m(k.windy) };
+  return { anthropic: m(k.anthropic), openai: m(k.openai), gemini: m(k.gemini), windy: m(k.windy), stripe: m(k.stripe), opensky: k.opensky ? "…" + k.opensky.slice(-4) : "" };
 }
 
 async function readJson(res: Response, who: string) {

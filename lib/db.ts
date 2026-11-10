@@ -14,7 +14,14 @@ declare global {
 function connString() {
   const cs = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.DATABASE_URL_UNPOOLED || "";
   // sslmode=require в новых версиях pg значит «проверять сертификат» — у Supabase это падает; шифрование остаётся через ssl ниже
-  return cs.replace(/([?&])(sslmode|supa)=[^&]*&?/g, "$1").replace(/[?&]$/, "");
+  if (!cs) return "";
+  try {
+    const u = new URL(cs);
+    for (const k of ["sslmode", "supa", "sslrootcert", "pgbouncer"]) u.searchParams.delete(k);
+    return u.toString();
+  } catch {
+    return cs;
+  }
 }
 
 function pool(): Pool {

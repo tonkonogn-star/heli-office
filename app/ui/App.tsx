@@ -10,6 +10,7 @@ import Personal from "./Personal";
 import Onboarding from "./Onboarding";
 import { QuickAdd } from "./Forms";
 import Splash from "./Splash";
+import Install from "./Install";
 
 export type Tab = "today" | "heli" | "build" | "personal" | "chat" | "more";
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -23,7 +24,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export type Nav = { tab: Tab; sub?: string; id?: string; thread?: string; files?: { id: string; name: string }[]; draft?: string };
 
 export default function App() {
-  const [auth, setAuth] = useState<{ hasPassword: boolean; authed: boolean; error?: string } | null>(null);
+  const [auth, setAuth] = useState<{ hasPassword: boolean; authed: boolean; error?: string; launcher?: boolean; movedTo?: string | null } | null>(null);
   const [s, setS] = useState<any>(null);
   const [nav, setNav] = useState<Nav>({ tab: "today" });
   const [quick, setQuick] = useState(false);
@@ -38,6 +39,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    try {
+      if (new URLSearchParams(location.search).has("installed")) sessionStorage.setItem("seenReel", "1");
+    } catch {}
     fetch("/api/auth")
       .then((r) => r.json())
       .then(setAuth)
@@ -76,6 +80,7 @@ export default function App() {
 
   function screen() {
   if (!auth) return null;
+  if (auth.launcher) return <Install movedTo={auth.movedTo || null} />;
   if (auth.error === "no_db") return <Gate mode="nodb" />;
   if (!auth.authed) return <Gate mode={auth.hasPassword ? "login" : "setup"} onDone={() => setAuth({ hasPassword: true, authed: true })} />;
   if (!s) return null;

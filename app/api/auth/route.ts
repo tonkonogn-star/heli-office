@@ -1,9 +1,12 @@
+import { isLauncher, movedTo } from "@/lib/launcher";
 import { hasPassword, isAuthed, setPassword, checkPassword, startSession, endSession } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    // подарочная ссылка Насти: только установка в аккаунты Максима
+    if (isLauncher()) return Response.json({ launcher: true, movedTo: await movedTo(), hasPassword: false, authed: false });
     return Response.json({ hasPassword: await hasPassword(), authed: await isAuthed() });
   } catch (e: any) {
     return Response.json({ error: e?.message === "NO_DATABASE" ? "no_db" : String(e?.message || e) }, { status: 503 });
@@ -11,6 +14,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (isLauncher()) return Response.json({ error: "Сначала установи приложение себе" }, { status: 400 });
   const { action, password } = await req.json().catch(() => ({}));
   if (action === "logout") {
     await endSession();

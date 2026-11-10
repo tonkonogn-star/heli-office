@@ -10,6 +10,14 @@ import { Reel } from "./Reel";
 
 export default function Onboarding({ s, reload }: { s: any; reload: () => void }) {
   const [step, setStep] = useState(0);
+  // только что установил по подарочной ссылке — рассказ он уже видел
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(location.search).has("installed")) sessionStorage.setItem("seenReel", "1");
+      setSeen(sessionStorage.getItem("seenReel") === "1");
+    } catch {}
+  }, []);
   const finish = async (thenChat?: boolean) => {
     await api("/api/settings", { method: "POST", json: { onboarded: true } });
     if (thenChat) toast("Расскажи помощнику о клиентах — можно голосом или файлом");
@@ -38,7 +46,16 @@ export default function Onboarding({ s, reload }: { s: any; reload: () => void }
 
       {step === 0 && (
         <>
-          <Reel />
+          {seen ? (
+            <>
+              <h1>Готово, это твоё приложение</h1>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Оно живёт в твоих аккаунтах, данные видишь только ты. Дальше — подключить твой Claude и то, что захочешь. Всё по желанию, пропущенное можно подключить потом в «Ещё».
+              </p>
+            </>
+          ) : (
+            <Reel />
+          )}
           <button className="btn ghost" style={{ marginTop: 10 }} disabled={busy} onClick={demo}>
             {busy ? "Заполняю пример…" : "Посмотреть приложение на примере"}
           </button>

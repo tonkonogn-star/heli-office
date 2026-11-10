@@ -31,6 +31,7 @@ export const GET = guard(async () => {
     getSetting("google"),
     getSetting("instagram"),
   ]);
+  const demo = await getSetting("demo");
   const [payments, spends, labs] = await Promise.all([
     q<any>("select * from payments where active order by next_due nulls last, title"),
     q<any>("select * from payment_log where day >= date_trunc('month', current_date) - interval '2 months' order by day desc, id desc"),
@@ -60,5 +61,6 @@ export const GET = guard(async () => {
     instagram: { connected: !!(insta as any)?.connected, handle: (insta as any)?.handle || "" },
     claude: { hasKey: !!(await apiKey()), health },
     usage,
+    demo: !!demo,
   });
 });

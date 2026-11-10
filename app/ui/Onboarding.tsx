@@ -128,6 +128,18 @@ export default function Onboarding({ s, reload }: { s: any; reload: () => void }
     reload();
   };
   const steps = 4;
+  const [busy, setBusy] = useState(false);
+  const demo = async () => {
+    setBusy(true);
+    try {
+      await api("/api/demo", { method: "POST", json: { action: "load" } });
+      await api("/api/settings", { method: "POST", json: { onboarded: true } });
+      reload();
+    } catch (e: any) {
+      toast(e.message);
+      setBusy(false);
+    }
+  };
   return (
     <div className="onb">
       <div className="steps" aria-hidden>
@@ -143,6 +155,9 @@ export default function Onboarding({ s, reload }: { s: any; reload: () => void }
             Это твой офис: секретарь и команда помощников для Heliclub и стройки. Вот что он умеет — за полминуты.
           </p>
           <Reel />
+          <button className="btn ghost" style={{ marginTop: 10 }} disabled={busy} onClick={demo}>
+            {busy ? "Заполняю пример…" : "Посмотреть приложение на примере"}
+          </button>
         </>
       )}
 

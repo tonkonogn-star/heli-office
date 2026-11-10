@@ -32,6 +32,21 @@ export default function Today({ s, go, reload }: { s: any; go: (n: Nav) => void;
         </button>
       </div>
 
+      {s.demo && (
+        <div className="panel pad row between" style={{ marginBottom: 12, background: "var(--caution-bg)", borderColor: "transparent" }}>
+          <span className="small">Это пример с выдуманными данными.</span>
+          <button
+            className="btn small"
+            onClick={async () => {
+              await api("/api/demo", { method: "POST", json: { action: "clear" } });
+              toast("Пример убран");
+              reload();
+            }}
+          >
+            Убрать пример
+          </button>
+        </div>
+      )}
       <Board s={s} reload={reload} />
 
       <div className="figs">

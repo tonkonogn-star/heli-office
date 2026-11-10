@@ -68,6 +68,25 @@ export default function More({ s, reload, go }: { s: any; reload: () => void; go
             </button>
           )}
         </div>
+        <button
+          className="item"
+          onClick={async () => {
+            if (s.demo) {
+              await api("/api/demo", { method: "POST", json: { action: "clear" } });
+              toast("Пример убран");
+            } else {
+              if (!confirm("Заполнить приложение выдуманным примером? Твои данные будут стёрты.")) return;
+              await api("/api/demo", { method: "POST", json: { action: "load" } });
+              toast("Пример загружен");
+            }
+            reload();
+          }}
+        >
+          <div className="grow">
+            <div className="t">{s.demo ? "Убрать пример" : "Показать на примере"}</div>
+            <div className="s">{s.demo ? "Стереть выдуманные данные и начать с чистого листа" : "Заполнить выдуманными клиентами, полётами, стройкой и анализами"}</div>
+          </div>
+        </button>
         <button className="item" onClick={() => setReel(true)}>
           <div className="grow">
             <div className="t">Что умеет приложение</div>

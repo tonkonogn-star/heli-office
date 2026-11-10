@@ -9,6 +9,7 @@ import More from "./More";
 import Personal from "./Personal";
 import Onboarding from "./Onboarding";
 import { QuickAdd } from "./Forms";
+import Splash from "./Splash";
 
 export type Tab = "today" | "heli" | "build" | "personal" | "chat" | "more";
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -64,10 +65,20 @@ export default function App() {
     window.scrollTo({ top: 0 });
   };
 
-  if (!auth) return <div className="gate muted">Открываю…</div>;
+  const ready = !!auth && (!auth.authed || !!s || auth.error === "no_db");
+  // заставка всегда в одном месте дерева — не перезапускается при смене экранов
+  return (
+    <>
+      <Splash ready={ready} />
+      {screen()}
+    </>
+  );
+
+  function screen() {
+  if (!auth) return null;
   if (auth.error === "no_db") return <Gate mode="nodb" />;
   if (!auth.authed) return <Gate mode={auth.hasPassword ? "login" : "setup"} onDone={() => setAuth({ hasPassword: true, authed: true })} />;
-  if (!s) return <div className="gate muted">Собираю данные…</div>;
+  if (!s) return null;
   if (!s.onboarded) return <Onboarding s={s} reload={load} />;
 
   return (
@@ -99,6 +110,7 @@ export default function App() {
     </div>
   );
 }
+}
 
 function Gate({ mode, onDone }: { mode: "login" | "setup" | "nodb"; onDone?: () => void }) {
   const [pw, setPw] = useState("");
@@ -108,7 +120,10 @@ function Gate({ mode, onDone }: { mode: "login" | "setup" | "nodb"; onDone?: () 
     return (
       <div className="gate">
         <div className="card">
-          <div className="mark">Офис</div>
+          <div className="mark">
+          <img src="/badge-black.png" alt="" />
+          Офис
+        </div>
           <p className="muted">База данных не подключена. В проекте на Vercel нужно добавить Neon Postgres (Storage → Create Database) и перезапустить.</p>
         </div>
       </div>
@@ -129,7 +144,10 @@ function Gate({ mode, onDone }: { mode: "login" | "setup" | "nodb"; onDone?: () 
   return (
     <div className="gate">
       <form className="card" onSubmit={submit}>
-        <div className="mark">Офис</div>
+        <div className="mark">
+          <img src="/badge-black.png" alt="" />
+          Офис
+        </div>
         <p className="muted" style={{ marginTop: 0 }}>{mode === "setup" ? "Придумай пароль. Он нужен, чтобы в твоё пространство никто, кроме тебя, не зашёл." : "Твоё пространство: Heliclub, стройка и личное."}</p>
         <Field2 label={mode === "setup" ? "Новый пароль, от 6 символов" : "Пароль"}>
           <input className="input" type="password" autoComplete={mode === "setup" ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />

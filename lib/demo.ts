@@ -73,25 +73,24 @@ export async function loadDemo() {
   });
   await t("save_task", { title: "Созвон с Bell по 505-му", space: "heli", due: plus(2) });
   await t("save_task", { title: "Продлить страховку YL-HCB", space: "heli", due: plus(-1) });
-  await t("save_site", { name: "Дом №1 (пример)", address: "", city: "", area_m2: 160, status: "Стройка", budget: 60000, buy_price: 180000, sale_target: 290000, finish_plan: plus(110) });
+  await t("save_site", { name: "Дом №1 (пример)", address: "", city: "Roquebrune-Cap-Martin", area_m2: 160, status: "Стройка", budget: 300000, buy_price: 1200000, sale_target: 2600000, finish_plan: plus(110) });
+  // настоящие объявления (ноябрь 2026) — чтобы было видно, как выглядит рынок; у Максима помощник соберёт свежие и похожие
   await t("save_comps", {
     site: "Дом №1",
     items: [
-      { title: "Дом 150 м², соседняя улица (пример)", price: 265000, area_m2: 150, status: "в продаже", note: "после ремонта" },
-      { title: "Дом 172 м², участок 8 соток (пример)", price: 298000, area_m2: 172, status: "в продаже" },
-      { title: "Дом 140 м², требует ремонта (пример)", price: 189000, area_m2: 140, status: "в продаже", note: "без ремонта" },
-      { title: "Дом 165 м² (пример)", price: 281000, area_m2: 165, status: "продан", note: "3 мес. на рынке" },
-      { title: "Таунхаус 120 м² (пример)", price: 214000, area_m2: 120, status: "продан" },
-      { title: "Дом 190 м², новый (пример)", price: 349000, area_m2: 190, status: "в продаже", note: "новострой" },
+      { title: "Maison de village, 3 комн.", url: "https://www.pap.fr/annonces/maison-roquebrune-cap-martin-06190-r459402221", price: 385000, area_m2: 80, status: "в продаже", note: "Рокбрюн, деревня" },
+      { title: "Вилла, 7 комн., Ментон (4 км)", url: "https://www.pap.fr/annonces/maison-menton-06500-r463001293", price: 1550000, area_m2: 145, status: "в продаже" },
+      { title: "Новая вилла, 4 спальни, вид на море", url: "https://www.michaelzingraf.com/en/for-sale/MZISJ2155-new-contemporary-villa-with-unobstructed-views-roquebrune-cap-martin", price: 7500000, area_m2: 217, status: "в продаже", note: "достраивается, бассейн" },
+      { title: "Вилла, 5 спален, панорама", url: "https://riviera.savills.fr/en/our-properties/ref-bsm260490/sale-villa-roquebrune-cap-martin-5-bedrooms-06190/", price: 16000000, area_m2: 337, status: "в продаже", note: "после реконструкции, участок 1 410 м²" },
     ],
   });
-  await t("save_stage", { site: "Дом №1", title: "Демонтаж", contractor: "Bygg SIA", due: plus(-25), status: "done", report: "Вывезено 4 контейнера, акт подписан" });
-  await t("save_stage", { site: "Дом №1", title: "Электрика", contractor: "Volt", due: plus(-4) });
-  await t("save_stage", { site: "Дом №1", title: "Сантехника", contractor: "Aqua", due: plus(30) });
+  await t("save_stage", { site: "Дом №1", title: "Демонтаж", contractor: "Démolition Azur", due: plus(-25), status: "done", report: "Вывезено 6 контейнеров, акт подписан" });
+  await t("save_stage", { site: "Дом №1", title: "Электрика", contractor: "Elec Riviera", due: plus(-4) });
+  await t("save_stage", { site: "Дом №1", title: "Сантехника", contractor: "Plomberie 06", due: plus(30) });
   await t("save_stage", { site: "Дом №1", title: "Отделка", contractor: "—", due: plus(75) });
-  await t("add_expense", { site: "Дом №1", title: "Демонтаж и вывоз", vendor: "Bygg SIA", amount: 8200, paid: true, day: plus(-24) });
-  await t("add_expense", { site: "Дом №1", title: "Кабель и щиток", vendor: "Volt", amount: 5400, day: plus(-6) });
-  await t("add_expense", { site: "Дом №1", title: "Окна, предоплата", vendor: "Logi", amount: 12500, paid: true, day: plus(-10) });
+  await t("add_expense", { site: "Дом №1", title: "Демонтаж и вывоз", vendor: "Démolition Azur", amount: 28000, paid: true, day: plus(-24) });
+  await t("add_expense", { site: "Дом №1", title: "Электрика, черновой этап", vendor: "Elec Riviera", amount: 24500, day: plus(-6) });
+  await t("add_expense", { site: "Дом №1", title: "Окна, предоплата", vendor: "Menuiserie Côte", amount: 41000, paid: true, day: plus(-10) });
   await t("save_task", { title: "Выбрать плитку для ванной", space: "build" });
   await t("save_payment", { title: "Школа", amount: 1200, category: "Школа", every: "month", next_due: plus(2) });
   await t("save_payment", { title: "Коммуналка", amount: 240, category: "Дом и счета", every: "month", next_due: plus(-2) });

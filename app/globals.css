@@ -241,3 +241,16 @@ ol.how li { margin-bottom: 6px; }
 @media (prefers-reduced-motion: reduce) { .splash .ring { animation: none; } }
 .mark { display: flex; align-items: center; gap: 12px; }
 .mark img { width: 44px; height: 44px; }
+
+/* ---------- виджеты ---------- */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 12px 11px; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tile:hover { border-color: var(--steel); }
+.tile .l { font-size: 12.5px; color: var(--steel); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile b { font-size: clamp(16px, 4.6vw, 21px); font-weight: 700; letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .s { font-size: 12px; color: var(--steel); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile.red b { color: var(--red); }
+.tile.amber b { color: var(--caution); }
+.tile.go b { color: var(--go); }
+.item.more { justify-content: center; color: var(--steel); font-size: 14px; }
+button.item.issue { grid-template-columns: 8px 1fr; }

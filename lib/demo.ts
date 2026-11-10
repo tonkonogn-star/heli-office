@@ -18,7 +18,7 @@ export async function loadDemo() {
   await t("save_aircraft", { reg: "YL-HCC", model: "Bell 407GXi", hours: 1430, next_service_hours: 1500, insurance_until: plus(190), arc_until: plus(260) });
   // прошлый месяц: счёт отправлен и просрочен
   const lastMonth = new Date(Date.now() - 32 * 864e5).toISOString().slice(0, 10);
-  await t("log_flight", { client: "Иванов", hours: 1.5, route: "Rīga — Jūrmala", day: lastMonth });
+  await t("log_flight", { client: "Иванов", hours: 1.5, route: "Рига — побережье", day: lastMonth });
   const old = await draftInvoices(lastMonth.slice(0, 7), "Иванов");
   if (old[0]) {
     await setInvoiceStatus(old[0].id, "sent");
@@ -43,14 +43,14 @@ export async function loadDemo() {
   });
   await t("save_task", { title: "Созвон с Bell по 505-му", space: "heli", due: plus(2) });
   await t("save_task", { title: "Продлить страховку YL-HCB", space: "heli", due: plus(-1) });
-  await t("save_site", { name: "Дом в Юрмале", address: "Jūrmala, Dzintari", status: "Стройка", budget: 60000, buy_price: 180000, sale_target: 290000, finish_plan: plus(110) });
-  await t("save_stage", { site: "Юрмал", title: "Демонтаж", contractor: "Bygg SIA", due: plus(-25), status: "done", report: "Вывезено 4 контейнера, акт подписан" });
-  await t("save_stage", { site: "Юрмал", title: "Электрика", contractor: "Volt", due: plus(-4) });
-  await t("save_stage", { site: "Юрмал", title: "Сантехника", contractor: "Aqua", due: plus(30) });
-  await t("save_stage", { site: "Юрмал", title: "Отделка", contractor: "—", due: plus(75) });
-  await t("add_expense", { site: "Юрмал", title: "Демонтаж и вывоз", vendor: "Bygg SIA", amount: 8200, paid: true, day: plus(-24) });
-  await t("add_expense", { site: "Юрмал", title: "Кабель и щиток", vendor: "Volt", amount: 5400, day: plus(-6) });
-  await t("add_expense", { site: "Юрмал", title: "Окна, предоплата", vendor: "Logi", amount: 12500, paid: true, day: plus(-10) });
+  await t("save_site", { name: "Дом №1 (пример)", address: "", status: "Стройка", budget: 60000, buy_price: 180000, sale_target: 290000, finish_plan: plus(110) });
+  await t("save_stage", { site: "Дом №1", title: "Демонтаж", contractor: "Bygg SIA", due: plus(-25), status: "done", report: "Вывезено 4 контейнера, акт подписан" });
+  await t("save_stage", { site: "Дом №1", title: "Электрика", contractor: "Volt", due: plus(-4) });
+  await t("save_stage", { site: "Дом №1", title: "Сантехника", contractor: "Aqua", due: plus(30) });
+  await t("save_stage", { site: "Дом №1", title: "Отделка", contractor: "—", due: plus(75) });
+  await t("add_expense", { site: "Дом №1", title: "Демонтаж и вывоз", vendor: "Bygg SIA", amount: 8200, paid: true, day: plus(-24) });
+  await t("add_expense", { site: "Дом №1", title: "Кабель и щиток", vendor: "Volt", amount: 5400, day: plus(-6) });
+  await t("add_expense", { site: "Дом №1", title: "Окна, предоплата", vendor: "Logi", amount: 12500, paid: true, day: plus(-10) });
   await t("save_task", { title: "Выбрать плитку для ванной", space: "build" });
   await t("save_payment", { title: "Школа", amount: 1200, category: "Школа", every: "month", next_due: plus(2) });
   await t("save_payment", { title: "Коммуналка", amount: 240, category: "Дом и счета", every: "month", next_due: plus(-2) });

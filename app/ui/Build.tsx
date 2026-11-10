@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { act, money, day, isPast, toast, todayIso, Icon } from "./kit";
+import { act, money, short, day, isPast, toast, todayIso, Icon } from "./kit";
 import { FormSheet, FORMS } from "./Forms";
-import { Seg, Deals, Contracts, Docs } from "./Shared";
+import { Seg, Deals, Contracts, Docs, Tiles } from "./Shared";
 import type { Nav } from "./App";
 
 type Sub = "sites" | "deals" | "contracts" | "docs";
@@ -22,6 +22,8 @@ export default function Build({ s, nav, go, reload }: { s: any; nav: Nav; go: (n
   return (
     <>
       <h1>Стройка</h1>
+      <BuildTiles s={s} go={go} />
+      <div style={{ height: 14 }} />
       <Seg items={SUBS} value={sub} set={(v) => go({ tab: "build", sub: v })} />
       {sub === "sites" && <Sites s={s} go={go} reload={reload} />}
       {sub === "deals" && <Deals s={s} space="build" reload={reload} />}
@@ -182,5 +184,23 @@ function Site({ s, site, back, go, reload }: { s: any; site: any; back: () => vo
       {form?.kind === "stage" && <FormSheet title={form.v.id ? form.v.title : "Новый этап"} tool="save_stage" fields={FORMS.stage(s)} initial={form.v} onClose={() => setForm(null)} done={reload} />}
       {form?.kind === "expense" && <FormSheet title="Расход" tool="add_expense" fields={FORMS.expense(s)} initial={form.v} onClose={() => setForm(null)} done={reload} />}
     </>
+  );
+}
+
+function BuildTiles({ s, go }: { s: any; go: (n: Nav) => void }) {
+  const budget = s.sites.reduce((a: number, x: any) => a + Number(x.budget || 0), 0);
+  const spent = s.expenses.reduce((a: number, e: any) => a + Number(e.amount), 0);
+  const unpaid = s.expenses.filter((e: any) => !e.paid).reduce((a: number, e: any) => a + Number(e.amount), 0);
+  const late = s.stages.filter((x: any) => x.status !== "done" && isPast(x.due));
+  const one = s.sites.length === 1 ? s.sites[0].id : undefined;
+  return (
+    <Tiles
+      go={go}
+      items={[
+        { label: "Потрачено", value: short(spent), sub: budget ? `из ${short(budget)}` : "бюджет не задан", tone: budget && spent > budget ? "red" : undefined, go: { tab: "build", id: one } },
+        { label: "Просрочки", value: String(late.length), sub: late[0] ? late[0].title : `${s.stages.filter((x: any) => x.status !== "done").length} в работе`, tone: late.length ? "red" : "go", go: { tab: "build", id: one } },
+        { label: "Не оплачено", value: short(unpaid), sub: "подрядчикам", tone: unpaid ? "amber" : undefined, go: { tab: "build", id: one } },
+      ]}
+    />
   );
 }

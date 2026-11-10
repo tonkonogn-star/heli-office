@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { act, money, day, isPast, openFile, toast, Sheet, todayIso } from "./kit";
+import { act, money, short, day, isPast, openFile, toast, Sheet, todayIso } from "./kit";
 import { FormSheet, FORMS } from "./Forms";
-import { Seg, Deals, Contracts, Docs } from "./Shared";
+import { Seg, Deals, Contracts, Docs, Tiles } from "./Shared";
 import type { Nav } from "./App";
 
 type Sub = "money" | "clients" | "flights" | "aircraft" | "deals" | "contracts" | "docs";
@@ -22,6 +22,8 @@ export default function Heli({ s, nav, go, reload }: { s: any; nav: Nav; go: (n:
   return (
     <>
       <h1>Heliclub</h1>
+      <HeliTiles s={s} go={go} />
+      <div style={{ height: 14 }} />
       <Seg items={SUBS} value={sub} set={(v) => go({ tab: "heli", sub: v })} />
       {sub === "money" && <Money s={s} reload={reload} />}
       {sub === "clients" && <Clients s={s} reload={reload} />}
@@ -351,5 +353,26 @@ function Aircraft({ s, reload }: { s: any; reload: () => void }) {
       {edit && <FormSheet title={edit.id ? edit.reg : "Новый борт"} tool="save_aircraft" fields={FORMS.aircraft()} initial={edit} onClose={() => setEdit(null)} done={reload} />}
       {pilot && <FormSheet title="Документы пилота" tool="set_pilot" fields={FORMS.pilot()} initial={p} onClose={() => setPilot(false)} done={reload} />}
     </>
+  );
+}
+
+function HeliTiles({ s, go }: { s: any; go: (n: Nav) => void }) {
+  const craft = s.aircraft
+    .filter((a: any) => a.next_service_hours != null)
+    .map((a: any) => ({ reg: a.reg, left: Number(a.next_service_hours) - Number(a.hours) }))
+    .sort((a: any, b: any) => a.left - b.left)[0];
+  const month = todayIso().slice(0, 7);
+  const hours = s.flights.filter((f: any) => String(f.day).startsWith(month)).reduce((a: number, f: any) => a + Number(f.hours), 0);
+  return (
+    <Tiles
+      go={go}
+      items={[
+        { label: "Должны вам", value: short(s.totals.owed), sub: s.totals.overdue ? "просрочка" : "всё в срок", tone: s.totals.overdue ? "red" : undefined, go: { tab: "heli", sub: "money" } },
+        { label: "Ждёт счёта", value: short(s.totals.unbilled), sub: s.drafts.length ? `черновиков: ${s.drafts.length}` : "полёты и работы", tone: s.drafts.length ? "amber" : undefined, go: { tab: "heli", sub: "money" } },
+        craft
+          ? { label: "До ТО", value: `${Math.max(0, craft.left).toFixed(0)} ч`, sub: craft.reg, tone: craft.left <= 5 ? "red" : craft.left <= 25 ? "amber" : undefined, go: { tab: "heli", sub: "aircraft" } }
+          : { label: "Налёт", value: `${hours.toFixed(1)} ч`, sub: "в этом месяце", go: { tab: "heli", sub: "flights" } },
+      ]}
+    />
   );
 }

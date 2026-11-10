@@ -22,6 +22,15 @@ export function money(n: unknown, cur = "EUR") {
   return cur === "EUR" ? `${s} €` : cur === "USD" ? `$${s}` : `${s} ${cur}`;
 }
 
+/** Коротко для виджетов: 26 100 € → 26,1 тыс €. */
+export function short(n: unknown, cur = "EUR") {
+  const v = Number(n) || 0;
+  const sign = cur === "EUR" ? " €" : cur === "USD" ? " $" : " " + cur;
+  if (Math.abs(v) >= 1e6) return (v / 1e6).toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + "м" + sign;
+  if (Math.abs(v) >= 1e4) return (v / 1e3).toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + "к" + sign;
+  return money(v, cur);
+}
+
 export function day(d: any, withYear = false) {
   if (!d) return "";
   const s = String(d).slice(0, 10);

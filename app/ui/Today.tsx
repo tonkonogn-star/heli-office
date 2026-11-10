@@ -1,7 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, act, money, day, isPast, Sheet, toast, Icon } from "./kit";
+import { api, act, money, short, day, isPast, Sheet, toast, Icon } from "./kit";
 import type { Nav } from "./App";
+import { Tiles, Fold } from "./Shared";
+
+const AREA_GO: Record<string, Nav> = {
+  Счета: { tab: "heli", sub: "money" },
+  Оплаты: { tab: "heli", sub: "money" },
+  Клиенты: { tab: "heli", sub: "clients" },
+  Полёты: { tab: "heli", sub: "flights" },
+  Вертолёты: { tab: "heli", sub: "aircraft" },
+  Пилот: { tab: "heli", sub: "aircraft" },
+  Стройка: { tab: "build" },
+  Платежи: { tab: "personal", sub: "pay" },
+};
 
 const DIRS = ["С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ"];
 const dir = (d: number) => DIRS[Math.round((d % 360) / 45) % 8];
@@ -10,9 +22,17 @@ export default function Today({ s, go, reload }: { s: any; go: (n: Nav) => void;
   const now = new Date();
   const hour = now.getHours();
   const hello = hour < 5 ? "Доброй ночи" : hour < 12 ? "Доброе утро" : hour < 18 ? "Добрый день" : "Добрый вечер";
-  const red = s.issues.filter((i: any) => i.level === "red");
-  const amber = s.issues.filter((i: any) => i.level !== "red");
-  const tasks = s.tasks.slice(0, 7);
+  const wd = s.whoop?.connected ? s.whoop.days?.[0] : null;
+  const weekAhead = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  const payWeek = s.payments.filter((p: any) => p.next_due && p.next_due <= weekAhead);
+  // что требует участия: черновики счетов + всё, что нашла команда; каждая строка ведёт туда, где это поправить
+  const attention = [
+    ...s.drafts.map((d: any) => ({ level: "amber", area: "Счета", text: `Черновик счёта ${d.number} (${d.client}) на ${money(d.total, d.currency)} — проверить и отправить`, go: { tab: "heli", sub: "money" } })),
+    ...s.issues
+      .filter((i: any) => i.area !== "Дела")
+      .sort((a: any, b: any) => (a.level === "red" ? 0 : 1) - (b.level === "red" ? 0 : 1))
+      .map((i: any) => ({ ...i, go: AREA_GO[i.area] })),
+  ];
 
   const done = async (id: string) => {
     await act("save_task", { id, status: "done" });
@@ -49,60 +69,41 @@ export default function Today({ s, go, reload }: { s: any; go: (n: Nav) => void;
       )}
       <Board s={s} reload={reload} />
 
-      <div className="figs">
-        <button className="fig" onClick={() => go({ tab: "heli", sub: "money" })}>
-          <span>Должны</span>
-          <b className="num">{money(s.totals.owed)}</b>
-        </button>
-        <button className={"fig" + (s.totals.overdue > 0 ? " alert" : "")} onClick={() => go({ tab: "heli", sub: "money" })}>
-          <span>Просрочено</span>
-          <b className="num">{money(s.totals.overdue)}</b>
-        </button>
-        <button className="fig" onClick={() => go({ tab: "heli", sub: "money" })}>
-          <span>Без счёта</span>
-          <b className="num">{money(s.totals.unbilled)}</b>
-        </button>
-      </div>
+      <Tiles
+        items={[
+          wd
+            ? { label: "Готовность", value: wd.recovery != null ? Math.round(wd.recovery) + "%" : "—", sub: "WHOOP", tone: wd.recovery != null && wd.recovery < 34 ? "red" : wd.recovery != null && wd.recovery < 67 ? "amber" : "go", go: { tab: "personal", sub: "health" } }
+            : { label: "WHOOP", value: "Подключить", sub: "сон и восстановление", go: { tab: "more" } },
+          wd ? { label: "Сон", value: wd.sleep_hours != null ? wd.sleep_hours + " ч" : "—", sub: wd.sleep_perf != null ? `качество ${Math.round(wd.sleep_perf)}%` : "этой ночью", go: { tab: "personal", sub: "health" } } : { label: "Анализы", value: String(s.labs.length), sub: "показателей", go: { tab: "personal", sub: "health" } },
+          { label: "Платежи", value: short(payWeek.reduce((a: number, p: any) => a + Number(p.amount), 0)), sub: payWeek.length ? `${payWeek.length} на неделе` : "на неделе нет", tone: payWeek.some((p: any) => isPast(p.next_due)) ? "red" : undefined, go: { tab: "personal", sub: "pay" } },
+        ]}
+        go={go}
+      />
 
-      {s.drafts.length > 0 && (
-        <button className="panel pad item" style={{ marginTop: 12 }} onClick={() => go({ tab: "heli", sub: "money" })}>
-          <div className="grow">
-            <div className="t">
-              {s.drafts.length === 1 ? "Готов черновик счёта" : `Готовы черновики счетов: ${s.drafts.length}`}
-            </div>
-            <div className="s">Проверь и отметь отправленными</div>
-          </div>
-          <span className="pill amber">Проверить</span>
-        </button>
-      )}
-
-      <h2>Что не сходится</h2>
-      <div className="panel list">
-        {s.issues.length === 0 && <div className="empty">Всё сходится: счета, сроки, бюджеты и документы в порядке.</div>}
-        {[...red, ...amber].slice(0, 8).map((i: any, k: number) => (
-          <div key={k} className="issue">
+      <h2>Требует внимания</h2>
+      <Fold
+        items={attention}
+        empty="Всё в порядке: счета, сроки, бюджеты и документы."
+        render={(i: any, k: number) => (
+          <button key={k} className="item issue" style={{ display: "grid" }} onClick={() => i.go && go(i.go)}>
             <i className={i.level === "red" ? "red" : ""} />
             <div>
               <div>{i.text}</div>
               <div className="small muted">{i.area}</div>
             </div>
-          </div>
-        ))}
-        {s.issues.length > 8 && (
-          <button className="item small muted" onClick={() => go({ tab: "chat", thread: "inbox" })}>
-            Ещё {s.issues.length - 8} — спроси помощника
           </button>
         )}
-      </div>
+      />
 
       <h2>Дела</h2>
-      <div className="panel list">
-        {tasks.length === 0 && (
-          <div className="empty">
+      <Fold
+        items={s.tasks}
+        empty={
+          <>
             Открытых дел нет. Надиктуй помощнику что угодно — <b>«в четверг созвон с Bell по 505-му»</b> — и он запишет.
-          </div>
-        )}
-        {tasks.map((t: any) => (
+          </>
+        }
+        render={(t: any) => (
           <div key={t.id} className="item" style={{ cursor: "default" }}>
             <button className="btn small" aria-label={"Готово: " + t.title} onClick={() => done(t.id)} style={{ width: 34, padding: 0 }}>
               ✓
@@ -113,25 +114,8 @@ export default function Today({ s, go, reload }: { s: any; go: (n: Nav) => void;
             </div>
             {t.due && <span className={"pill" + (isPast(t.due) ? " red" : "")}>{day(t.due)}</span>}
           </div>
-        ))}
-      </div>
-
-      {s.deals.length > 0 && (
-        <>
-          <h2>Сделки: следующий шаг</h2>
-          <div className="panel list">
-            {s.deals.slice(0, 5).map((d: any) => (
-              <button key={d.id} className="item" onClick={() => go({ tab: d.space === "build" ? "build" : "heli", sub: "deals" })}>
-                <div className="grow">
-                  <div className="t">{d.title}</div>
-                  <div className="s">{d.next_step || "Нет следующего шага"}</div>
-                </div>
-                {d.next_date && <span className={"pill" + (isPast(d.next_date) ? " red" : "")}>{day(d.next_date)}</span>}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+        )}
+      />
     </>
   );
 }
@@ -199,19 +183,6 @@ function Board({ s, reload }: { s: any; reload: () => void }) {
               <span className="h">{h.local}</span>
             </div>
           ))}
-        </div>
-      )}
-      {s.whoop?.connected && wd && (
-        <div className="ready">
-          <div>
-            <b>{wd.recovery != null ? Math.round(wd.recovery) + "%" : "—"}</b>восстановление
-          </div>
-          <div>
-            <b>{wd.sleep_hours ?? "—"} ч</b>сон
-          </div>
-          <div>
-            <b>{s.whoop.days[1]?.strain ?? "—"}</b>нагрузка вчера
-          </div>
         </div>
       )}
       <div className="note">Подсказка по {w?.source || "прогнозу"}, не разрешение на вылет. Решение — за пилотом.</div>

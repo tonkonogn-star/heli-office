@@ -56,7 +56,8 @@ export const GET = guard(async () => {
     company: co,
     base,
     onboarded: !!onboarded,
-    whoop: { ...ws, days: wd, available: !!(process.env.WHOOP_CLIENT_ID || ws.hasClient) },
+    // в режиме примера показываем выдуманный WHOOP, чтобы было видно, как выглядят виджеты
+    whoop: !ws.connected && demo ? { connected: true, demo: true, available: true, days: DEMO_WHOOP() } : { ...ws, days: wd, available: !!(process.env.WHOOP_CLIENT_ID || ws.hasClient) },
     google: { connected: !!(google as any)?.connected, available: !!process.env.GOOGLE_CLIENT_ID },
     instagram: { connected: !!(insta as any)?.connected, handle: (insta as any)?.handle || "" },
     claude: { hasKey: !!(await apiKey()), health },
@@ -64,3 +65,9 @@ export const GET = guard(async () => {
     demo: !!demo,
   });
 });
+
+function DEMO_WHOOP() {
+  const rec = [72, 58, 81, 44, 67, 75, 63];
+  const sleep = [7.4, 6.6, 8.1, 5.9, 7.0, 7.6, 6.8];
+  return rec.map((r, i) => ({ d: new Date(Date.now() - i * 864e5).toISOString().slice(0, 10), recovery: r, sleep_hours: sleep[i], sleep_perf: 70 + ((i * 7) % 25), strain: 9 + ((i * 3) % 8), rhr: 52 + (i % 4), hrv: 60 + ((i * 5) % 20) }));
+}

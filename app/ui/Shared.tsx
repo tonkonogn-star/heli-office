@@ -162,3 +162,37 @@ export function Docs({ s, space, reload }: { s: any; space: string; reload: () =
     </>
   );
 }
+
+export type Tile = { label: string; value: string; sub?: string; tone?: "red" | "amber" | "go"; go?: Nav };
+
+/** Виджеты: каждый ведёт туда, где про это подробнее. */
+export function Tiles({ items, go }: { items: Tile[]; go: (n: Nav) => void }) {
+  return (
+    <div className="tiles">
+      {items.map((t) => (
+        <button key={t.label} className={"tile" + (t.tone ? " " + t.tone : "")} onClick={() => t.go && go(t.go)}>
+          <span className="l">{t.label}</span>
+          <b className="num">{t.value}</b>
+          {t.sub && <span className="s">{t.sub}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Список, свёрнутый до трёх строк, — разворачивается по нажатию. */
+export function Fold<T>({ items, render, empty, show = 3 }: { items: T[]; render: (x: T, i: number) => React.ReactNode; empty: React.ReactNode; show?: number }) {
+  const [open, setOpen] = useState(false);
+  const list = open ? items : items.slice(0, show);
+  return (
+    <div className="panel list">
+      {items.length === 0 && <div className="empty">{empty}</div>}
+      {list.map((x, i) => render(x, i))}
+      {items.length > show && (
+        <button className="item more" onClick={() => setOpen(!open)} aria-expanded={open}>
+          {open ? "Свернуть" : `Показать все — ещё ${items.length - show}`}
+        </button>
+      )}
+    </div>
+  );
+}

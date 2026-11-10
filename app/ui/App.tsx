@@ -153,6 +153,7 @@ function Gate({ mode, onDone }: { mode: "login" | "setup" | "nodb"; onDone?: () 
           <input className="input" type="password" autoComplete={mode === "setup" ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
         </Field2>
         {err && <p style={{ color: "var(--red)" }}>{err}</p>}
+        <InstallHint />
         <button className="btn primary" style={{ width: "100%" }} disabled={busy || pw.length < (mode === "setup" ? 6 : 1)}>
           {mode === "setup" ? "Сохранить пароль" : "Войти"}
         </button>
@@ -167,5 +168,30 @@ function Field2({ label, children }: { label: string; children: React.ReactNode 
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+/** iPhone: приложение ставится на экран «Домой» из Safari — тогда открывается без браузера, как обычное. */
+function InstallHint() {
+  const [show, setShow] = useState<null | "ios" | "other">(null);
+  useEffect(() => {
+    const standalone = (navigator as any).standalone || window.matchMedia("(display-mode: standalone)").matches;
+    if (standalone) return;
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    setShow(ios ? "ios" : /android/i.test(navigator.userAgent) ? "other" : null);
+  }, []);
+  if (!show) return null;
+  return (
+    <div className="panel pad small" style={{ marginBottom: 14, background: "var(--soft)", borderColor: "transparent" }}>
+      {show === "ios" ? (
+        <>
+          <b>Поставь меня на экран «Домой»</b> — буду открываться как приложение, без браузера: внизу Safari нажми «Поделиться» <span aria-hidden>⬆︎</span>, затем «На экран „Домой“».
+        </>
+      ) : (
+        <>
+          <b>Поставь меня на главный экран</b> — меню браузера ⋮ → «Добавить на главный экран».
+        </>
+      )}
+    </div>
   );
 }

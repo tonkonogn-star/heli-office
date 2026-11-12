@@ -3,6 +3,7 @@ import { q, getSetting, setSetting } from "./db";
 import { TOOLS, runTool } from "./tools";
 import { AGENTS, agentById, BASE } from "./agents";
 import { dossier } from "./ops";
+import { DEPTH, RESEARCH_Q } from "./depth";
 
 export type Emit = (ev: Record<string, unknown>) => void;
 
@@ -91,6 +92,7 @@ export async function buildSystem(thread: string) {
   const now = new Date().toLocaleString("ru-RU", { timeZone: "Europe/Vienna", weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
   return (
     BASE +
+    DEPTH +
     (a ? `\n\n## Твоя роль: ${a.name}\n${a.role}` : `\n\n## Ты — секретарь в общем чате\nОтвечаешь на всё сам. Команда помощников (у каждого свой чат в приложении), можешь посоветовать Максиму зайти к нужному:\n${team}`) +
     "\n\n# Данные Максима\n" +
     (await dossier()) +
@@ -146,7 +148,7 @@ export async function runChat(thread: string, text: string, docIds: string[], em
       const last = msgs[msgs.length - 1];
       last.content = [...att, { type: "text", text: typeof last.content === "string" ? last.content : "" }];
     }
-    const heavy = !!docIds?.length || DEEP.test(text) || thread === "a:contracts" || thread === "a:flip";
+    const heavy = !!docIds?.length || DEEP.test(text) || RESEARCH_Q.test(text) || thread === "a:contracts" || thread === "a:flip";
     const r = await agentLoop({ key, system, msgs, heavy, emit: (ev) => {
       if (ev.type === "text") full += String(ev.text || "");
       if (ev.type === "action") actions.push(String(ev.text));
@@ -209,7 +211,7 @@ export async function agentLoop(o: { key: string; system: string; msgs: any[]; h
   for (let turn = 0; turn < (o.maxTurns || 12); turn++) {
     if (turn > 0 && Date.now() > deadline) break;
     const model = o.heavy ? MODELS.deep : MODELS.chat;
-    const stream = c.messages.stream({ model, max_tokens: o.heavy ? 12000 : 6000, system: o.system, messages: msgs, tools: [WEB_SEARCH as any, ...(TOOLS as any)] });
+    const stream = c.messages.stream({ model, max_tokens: o.heavy ? 12000 : 6000, system: o.system, messages: msgs, tools: [{ ...WEB_SEARCH, max_uses: o.heavy ? 15 : 5 } as any, ...(TOOLS as any)] });
     for await (const ev of stream as any) {
       if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") {
         full += ev.delta.text;

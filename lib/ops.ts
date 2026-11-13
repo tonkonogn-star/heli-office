@@ -74,19 +74,56 @@ export async function addCharge(o: { client: string; kind?: string; title: strin
 }
 
 /** Полёт: запись в журнал + строка в счёт клиента по его ставке за лётный час. */
-export async function logFlight(o: { client?: string; hours: number; route?: string; aircraft?: string; day?: string; notes?: string; bill?: boolean }) {
+export async function logFlight(o: { client?: string; hours: number; route?: string; aircraft?: string; day?: string; notes?: string; bill?: boolean; pilot?: string; flight_id?: string }) {
   const c = o.client ? await findClient(o.client) : null;
   if (o.client && !c) throw new Error(`Не нашёл клиента «${o.client}».`);
-  const id = newId("f");
+  const reg = o.aircraft || c?.aircraft || "";
   const hours = num(o.hours) || 0;
-  await q("insert into flights(id,day,client_id,aircraft,route,hours,notes) values($1,$2,$3,$4,$5,$6,$7)", [id, o.day || today(), c?.id || null, o.aircraft || c?.aircraft || "", o.route || "", hours, o.notes || ""]);
-  if (o.aircraft || c?.aircraft) await q("update aircraft set hours = hours + $2 where lower(reg)=lower($1)", [o.aircraft || c?.aircraft, hours]);
-  let charge: any = null;
-  if (c && o.bill !== false) {
-    if (!Number(c.hour_rate)) return { id, warning: `У клиента ${c.name} не задана ставка за лётный час — полёт записан, но в счёт не попал. Скажи ставку, и я добавлю.` };
-    charge = await addCharge({ client: c.id, kind: "flight", title: `Flight${o.route ? " " + o.route : ""}${o.aircraft || c.aircraft ? " (" + (o.aircraft || c.aircraft) + ")" : ""}`, qty: hours, unit_price: Number(c.hour_rate), day: o.day, flight_id: id });
+  const day = o.day || today();
+  // полёт, который уже записал радар (без клиента), — дополняем, а не пишем второй раз, чтобы налёт не задвоился
+  const radar = o.flight_id
+    ? (await q<any>("select * from flights where id=$1", [o.flight_id]))[0]
+    : reg
+      ? (await q<any>("select * from flights where source='radar' and client_id is null and lower(aircraft)=lower($1) and day=$2 and abs(hours-$3) <= 0.5 order by abs(hours-$3) limit 1", [reg, day, hours || 0]))[0]
+      : null;
+  let id: string;
+  if (radar) {
+    id = radar.id;
+    const h = hours || Number(radar.hours);
+    await q("update flights set client_id=$2, pilot=$3, route=coalesce(nullif($4,''),route), hours=$5, notes=coalesce(nullif($6,''),notes) where id=$1", [id, c?.id || null, o.pilot || radar.pilot || "", o.route || "", h, o.notes || ""]);
+    if (radar.aircraft) await q("update aircraft set hours = hours + $2 where lower(reg)=lower($1)", [radar.aircraft, h - Number(radar.hours)]);
+    if (radar.radar_id) await q("update radar_flights set status='logged' where id=$1", [radar.radar_id]);
+  } else {
+    id = newId("f");
+    await q("insert into flights(id,day,client_id,aircraft,route,hours,notes,pilot) values($1,$2,$3,$4,$5,$6,$7,$8)", [id, day, c?.id || null, reg, o.route || "", hours, o.notes || "", o.pilot || ""]);
+    if (reg) await q("update aircraft set hours = hours + $2 where lower(reg)=lower($1)", [reg, hours]);
   }
-  return { id, client: c?.name, hours, charge };
+  const h = hours || Number(radar?.hours) || 0;
+  let charge: any = null;
+  if (c && o.bill !== false && !(await q("select 1 from charges where flight_id=$1", [id])).length) {
+    if (!Number(c.hour_rate)) return { id, warning: `У клиента ${c.name} не задана ставка за лётный час — полёт записан, но в счёт не попал. Скажи ставку, и я добавлю.` };
+    charge = await addCharge({ client: c.id, kind: "flight", title: `Flight${o.route || radar?.route ? " " + (o.route || radar?.route) : ""}${reg || radar?.aircraft ? " (" + (reg || radar?.aircraft) + ")" : ""}`, qty: h, unit_price: Number(c.hour_rate), day, flight_id: id });
+  }
+  return { id, client: c?.name, pilot: o.pilot || radar?.pilot || "", hours: h, charge, fromRadar: !!radar };
+}
+
+/** Журнал налёта борта: все полёты, кто летал, для кого, итог. */
+export async function aircraftLog(ref: string, limit = 100) {
+  const a = (await q<any>("select * from aircraft where id=$1 or lower(reg)=lower($1)", [ref]))[0];
+  if (!a) throw new Error("Нет такого борта");
+  const rows = await q<any>(
+    "select f.id, f.day, f.hours, f.route, f.pilot, f.source, c.name client, exists(select 1 from charges ch where ch.flight_id=f.id) billed from flights f left join clients c on c.id=f.client_id where lower(f.aircraft)=lower($1) order by f.day desc, f.created_at desc limit $2",
+    [a.reg, limit],
+  );
+  const sum = await q<any>("select coalesce(sum(hours) filter (where day >= date_trunc('month', current_date)),0)::float m, coalesce(sum(hours) filter (where day > current_date - 365),0)::float y from flights where lower(aircraft)=lower($1)", [a.reg]);
+  return {
+    aircraft: a,
+    month: sum[0].m,
+    year: sum[0].y,
+    toService: a.next_service_hours != null ? Math.round((Number(a.next_service_hours) - Number(a.hours)) * 10) / 10 : null,
+    toOverhaul: a.overhaul_at_hours != null ? Math.round((Number(a.overhaul_at_hours) - Number(a.hours)) * 10) / 10 : null,
+    flights: rows.map((r: any) => ({ ...r, hours: Number(r.hours) })),
+  };
 }
 
 /* ---------- счета ---------- */
@@ -238,6 +275,8 @@ export async function audit(): Promise<Issue[]> {
   const soon = (d: string | null, days: number) => d && new Date(d).getTime() - new Date(t).getTime() < days * 864e5;
   for (const a of craft) {
     if (a.next_service_hours && Number(a.next_service_hours) - Number(a.hours) <= 25) out.push({ level: Number(a.next_service_hours) - Number(a.hours) <= 5 ? "red" : "amber", area: "Вертолёты", text: `${a.reg}: до ТО ${Math.max(0, Number(a.next_service_hours) - Number(a.hours)).toFixed(1)} ч` });
+    if (a.overhaul_at_hours && Number(a.overhaul_at_hours) - Number(a.hours) <= 50) out.push({ level: Number(a.overhaul_at_hours) - Number(a.hours) <= 10 ? "red" : "amber", area: "Вертолёты", text: `${a.reg}: до оверхола ${Math.max(0, Number(a.overhaul_at_hours) - Number(a.hours)).toFixed(1)} ч` });
+    if (soon(a.overhaul_date, 90)) out.push({ level: soon(a.overhaul_date, 30) ? "red" : "amber", area: "Вертолёты", text: `${a.reg}: оверхол по сроку ${fmtDay(a.overhaul_date)}` });
     if (soon(a.next_service_date, 30)) out.push({ level: soon(a.next_service_date, 7) ? "red" : "amber", area: "Вертолёты", text: `${a.reg}: ТО по сроку ${fmtDay(a.next_service_date)}` });
     if (soon(a.insurance_until, 30)) out.push({ level: soon(a.insurance_until, 7) ? "red" : "amber", area: "Вертолёты", text: `${a.reg}: страховка до ${fmtDay(a.insurance_until)}` });
     if (soon(a.arc_until, 30)) out.push({ level: soon(a.arc_until, 7) ? "red" : "amber", area: "Вертолёты", text: `${a.reg}: ARC (сертификат лётной годности) до ${fmtDay(a.arc_until)}` });
@@ -250,7 +289,7 @@ export async function audit(): Promise<Issue[]> {
   const pays = await q<any>("select title, amount, currency, next_due from payments where active and next_due <= current_date + 3 order by next_due");
   for (const r of pays) out.push({ level: r.next_due < t ? "red" : "amber", area: "Платежи", text: `${r.title}: ${money(r.amount, r.currency)} — ${r.next_due < t ? "просрочен с" : "до"} ${fmtDay(r.next_due)}` });
   const radar = await q<any>("select a.reg, to_char(r.first_seen at time zone 'Europe/Riga','DD.MM') d, round(extract(epoch from (r.last_seen-r.first_seen))/3600.0,1)::float h from radar_flights r join aircraft a on a.id=r.aircraft_id where r.status='new' order by r.first_seen desc limit 5").catch(() => []);
-  for (const r of radar) out.push({ level: "amber", area: "Полёты", text: `Радар видел ${r.reg} в воздухе ${r.d}, ≈${r.h} ч — полёт не записан` });
+  for (const r of radar) out.push({ level: "amber", area: "Полёты", text: `${r.reg} летал ${r.d}, ≈${r.h} ч (радар записал в журнал) — кто летал и кому счёт?` });
   for (const r of noRate) out.push({ level: "amber", area: "Клиенты", text: `${r.name}: не заданы ставки — счёт не собрать` });
   return out;
 }
@@ -298,7 +337,7 @@ export async function dossier() {
   const ig = await getSetting<any>("instagram");
   if (ig?.handle) L.push("## Instagram", `Профиль Максима: instagram.com/${ig.handle} — смотри его публичные посты (web_search), только чтобы понимать, где он и чем занят. Не обсуждай его посты, если он не спросил.`);
   L.push("## Клиенты Heliclub", clients.map((c) => `- ${c.id} ${c.name}: вертолёт ${c.aircraft || "—"}, доля ${c.share || "—"}, хранение ${c.storage_rate}/мес, лётный час ${c.hour_rate}, ТО-час ${c.maint_rate} ${c.currency}${c.email ? ", " + c.email : ""}`).join("\n") || "пока нет");
-  L.push("## Вертолёты", craft.map((a) => `- ${a.id} ${a.reg} ${a.model}: налёт ${a.hours} ч, ТО на ${a.next_service_hours ?? "—"} ч / ${fmtDay(a.next_service_date) || "—"}, страховка до ${fmtDay(a.insurance_until) || "—"}, ARC до ${fmtDay(a.arc_until) || "—"}`).join("\n") || "пока нет");
+  L.push("## Вертолёты", craft.map((a) => `- ${a.id} ${a.reg} ${a.model}: налёт ${a.hours} ч, ТО на ${a.next_service_hours ?? "—"} ч, оверхол на ${a.overhaul_at_hours ?? "—"} ч / ${fmtDay(a.overhaul_date) || "—"} / ${fmtDay(a.next_service_date) || "—"}, страховка до ${fmtDay(a.insurance_until) || "—"}, ARC до ${fmtDay(a.arc_until) || "—"}`).join("\n") || "пока нет");
   L.push("## Долги и счета", o.debts.map((r) => `- ${r.name}: выставлено и не оплачено ${money(r.unpaid, r.currency)} (просрочено ${money(r.overdue, r.currency)}), черновики ${money(r.drafts, r.currency)}, ещё не в счёте ${money(r.unbilled, r.currency)}`).join("\n") || "—");
   L.push("## Черновики счетов", o.drafts.map((i) => `- ${i.number} ${i.client} ${money(i.total, i.currency)}`).join("\n") || "нет");
   L.push("## Объекты стройки", o.sites.map((s) => `- ${s.id} ${s.name} (${s.status}), бюджет ${money(s.budget)}, план сдачи ${fmtDay(s.finish_plan) || "—"}`).join("\n") || "пока нет");

@@ -14,13 +14,13 @@ export async function loadDemo() {
   await t("save_client", { name: "Петров Air", contact: "Игорь Петров", aircraft: "YL-HCB", share: "1/8", storage_rate: 900, hour_rate: 650, maint_rate: 95, email: "petrov@example.com" });
   await t("save_client", { name: "Baltic Charter", contact: "Martins Ozols", aircraft: "YL-HCC", share: "1/4", storage_rate: 1200, hour_rate: 700, maint_rate: 95 });
   await t("save_client", { name: "Иванов", aircraft: "YL-HCB", share: "1/8", storage_rate: 900, hour_rate: 650, maint_rate: 95 });
-  await t("save_aircraft", { reg: "YL-HCB", model: "Bell 505", hours: 812, next_service_hours: 830, next_service_date: plus(48), insurance_until: plus(21), arc_until: plus(140), purchase_price: 650000, purchase_date: plus(-900) });
-  await t("save_aircraft", { reg: "YL-HCC", model: "Bell 407GXi", hours: 1430, next_service_hours: 1500, insurance_until: plus(190), arc_until: plus(260) });
+  await t("save_aircraft", { reg: "YL-HCB", model: "Bell 505", hours: 812, next_service_hours: 830, next_service_date: plus(48), insurance_until: plus(21), arc_until: plus(140), purchase_price: 650000, purchase_date: plus(-900), overhaul_at_hours: 3000 });
+  await t("save_aircraft", { reg: "YL-HCC", model: "Bell 407GXi", hours: 1430, next_service_hours: 1500, insurance_until: plus(190), arc_until: plus(260), overhaul_at_hours: 1500 });
   // история за год, чтобы финансы были не пустыми
   for (let m = 11; m >= 1; m--) {
     const dd = plus(-m * 30);
-    await t("log_flight", { client: "Петров Air", hours: 3 + (m % 3), route: "Рига — побережье", day: dd });
-    await t("log_flight", { client: "Baltic Charter", hours: 4 + (m % 4), route: "Rīga — Cēsis", day: dd });
+    await t("log_flight", { client: "Петров Air", hours: 3 + (m % 3), route: "Рига — побережье", day: dd, pilot: "Максим" });
+    await t("log_flight", { client: "Baltic Charter", hours: 4 + (m % 4), route: "Rīga — Cēsis", day: dd, pilot: "Мартиньш" });
     await t("add_charge", { client: "Петров Air", kind: "storage", title: "Hangarage", qty: 1, unit_price: 900, day: dd });
     await t("add_charge", { client: "Baltic Charter", kind: "storage", title: "Hangarage", qty: 1, unit_price: 1200, day: dd });
     await t("add_aircraft_cost", { aircraft: "YL-HCB", kind: "Топливо", title: "Jet A-1", amount: 520 + (m % 3) * 60, day: dd });
@@ -48,15 +48,15 @@ export async function loadDemo() {
   await q("update aircraft set hours = 1430 where reg='YL-HCC'");
   // прошлый месяц: счёт отправлен и просрочен
   const lastMonth = new Date(Date.now() - 32 * 864e5).toISOString().slice(0, 10);
-  await t("log_flight", { client: "Иванов", hours: 1.5, route: "Рига — побережье", day: lastMonth });
+  await t("log_flight", { client: "Иванов", hours: 1.5, route: "Рига — побережье", day: lastMonth, pilot: "Максим" });
   const old = await draftInvoices(lastMonth.slice(0, 7), "Иванов");
   if (old[0]) {
     await setInvoiceStatus(old[0].id, "sent");
     await q("update invoices set due=$2, issued=$3 where id=$1", [old[0].id, plus(-6), plus(-20)]);
   }
   // этот месяц: полёты и работы, ещё без счёта
-  await t("log_flight", { client: "Петров Air", hours: 2, route: "Rīga — Sigulda — Rīga", day: plus(-3) });
-  await t("log_flight", { client: "Baltic Charter", hours: 1.2, route: "Rīga — Cēsis", day: plus(-1) });
+  await t("log_flight", { client: "Петров Air", hours: 2, route: "Rīga — Sigulda — Rīga", day: plus(-3), pilot: "Максим" });
+  await t("log_flight", { client: "Baltic Charter", hours: 1.2, route: "Rīga — Cēsis", day: plus(-1), pilot: "Мартиньш" });
   await t("log_flight", { hours: 0.8, route: "Тренировочный круг", aircraft: "YL-HCB", day: plus(-2) });
   await t("add_charge", { client: "Baltic Charter", kind: "maintenance", title: "Замена фильтров, проверка", qty: 3, unit_price: 95 });
   await t("draft_invoices", { client: "Петров Air" });

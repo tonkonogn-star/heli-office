@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { act, api, money, short, day, isPast, openFile, toast, Sheet, todayIso } from "./kit";
 import { FormSheet, FORMS } from "./Forms";
 import { Seg, Deals, Contracts, Docs, Tiles } from "./Shared";
@@ -353,7 +353,7 @@ function Flights({ s, reload }: { s: any; reload: () => void }) {
     <>
       {s.radar?.length > 0 && (
         <>
-          <h2 style={{ marginTop: 6 }}>Радар видел — записать?</h2>
+          <h2 style={{ marginTop: 6 }}>Радар записал — кто летал?</h2>
           <div className="panel list">
             {s.radar.map((r: any) => (
               <div key={r.id} className="item" style={{ cursor: "default" }}>
@@ -365,17 +365,17 @@ function Flights({ s, reload }: { s: any; reload: () => void }) {
                 </div>
                 <div className="btns" style={{ flexWrap: "nowrap" }}>
                   <button className="btn small primary" onClick={() => setRf(r)}>
-                    Записать
+                    Уточнить
                   </button>
                   <button className="btn small ghost" onClick={() => skip(r.id)}>
-                    Не надо
+                    Свой, без счёта
                   </button>
                 </div>
               </div>
             ))}
           </div>
           <p className="small muted" style={{ margin: "6px 4px 0" }}>
-            Радары видят борт по транспондеру. Нажми «Записать», выбери клиента — полёт попадёт в счёт.
+            Радар видит борт по транспондеру и сам пишет полёт в журнал борта — часы сразу идут в счётчики ТО и оверхола. Остаётся указать, кто летал и для кого — тогда полёт попадёт в счёт.
           </p>
         </>
       )}
@@ -394,8 +394,8 @@ function Flights({ s, reload }: { s: any; reload: () => void }) {
         {s.flights.map((f: any) => (
           <div key={f.id} className="item" style={{ cursor: "default" }}>
             <div className="grow">
-              <div className="t">{f.client || "Свой полёт"}</div>
-              <div className="s">{[day(f.day), f.route, f.aircraft].filter(Boolean).join(" · ")}</div>
+              <div className="t">{f.client || (f.source === "radar" ? "Радар — кто летал?" : "Свой полёт")}</div>
+              <div className="s">{[day(f.day), f.aircraft, f.pilot ? "пилот " + f.pilot : "", f.route].filter(Boolean).join(" · ")}</div>
             </div>
             <span className="num">{Number(f.hours)} ч</span>
           </div>
@@ -403,16 +403,13 @@ function Flights({ s, reload }: { s: any; reload: () => void }) {
       </div>
       {rf && (
         <FormSheet
-          title="Полёт по радару"
+          title={`${rf.reg} · ${day(rf.day)}`}
           tool="log_flight"
           fields={FORMS.flight(s)}
-          initial={{ day: rf.day, hours: rf.hours, aircraft: rf.reg, route: rf.dep || rf.arr ? `${rf.dep || "?"} — ${rf.arr || "?"}` : "" }}
+          initial={{ flight_id: rf.flight_id || undefined, day: rf.day, hours: rf.hours, aircraft: rf.reg, route: rf.dep || rf.arr ? `${rf.dep || "?"} — ${rf.arr || "?"}` : "" }}
           onClose={() => setRf(null)}
-          done={async () => {
-            await act("radar", { resolve: rf.id, status: "logged" });
-            reload();
-          }}
-          submit="Записать полёт"
+          done={reload}
+          submit="Сохранить"
         />
       )}
       {add && <FormSheet title="Полёт" tool="log_flight" fields={FORMS.flight(s)} initial={{ day: todayIso() }} onClose={() => setAdd(false)} done={reload} submit="Записать полёт" />}
@@ -420,8 +417,49 @@ function Flights({ s, reload }: { s: any; reload: () => void }) {
   );
 }
 
+function AircraftSheet({ a, s, onClose, onEdit }: { a: any; s: any; onClose: () => void; onEdit: () => void }) {
+  const [log, setLog] = useState<any>(null);
+  useEffect(() => {
+    act("aircraft_log", { aircraft: a.id }).then((r) => setLog(JSON.parse(r.result))).catch(() => setLog({ flights: [] }));
+  }, [a.id]);
+  const n = (v: number | null | undefined) => (v == null ? "—" : `${Math.max(0, v).toFixed(1)} ч`);
+  const tone = (v: number | null | undefined, warn: number, red: number) => (v == null ? "" : v <= red ? "red" : v <= warn ? "amber" : "go");
+  return (
+    <Sheet title={`${a.reg}${a.model ? " · " + a.model : ""}`} onClose={onClose}>
+      <div className="tiles" style={{ gridTemplateColumns: "repeat(2,1fr)", marginBottom: 12 }}>
+        <div className="tile"><div className="l">Налёт всего</div><b>{Number(a.hours).toFixed(1)} ч</b><div className="s">в этом месяце {log ? log.month.toFixed(1) : "…"} ч</div></div>
+        <div className="tile"><div className="l">За 12 месяцев</div><b>{log ? log.year.toFixed(1) : "…"} ч</b><div className="s">{a.icao24 ? "радар следит" : "радар не подключён"}</div></div>
+        <div className={"tile " + tone(log?.toService, 25, 5)}><div className="l">До ТО</div><b>{n(log?.toService)}</b><div className="s">{a.next_service_date ? "или до " + day(a.next_service_date, true) : "по налёту"}</div></div>
+        <div className={"tile " + tone(log?.toOverhaul, 50, 10)}><div className="l">До оверхола</div><b>{n(log?.toOverhaul)}</b><div className="s">{a.overhaul_date ? "или до " + day(a.overhaul_date, true) : a.overhaul_at_hours ? "по налёту" : "не указан"}</div></div>
+      </div>
+      <div className="row between">
+        <h3 style={{ margin: "6px 0" }}>Журнал налёта</h3>
+        <button className="btn small" onClick={onEdit}>
+          Данные борта
+        </button>
+      </div>
+      <div className="panel list">
+        {!log && <div className="empty">Загружаю…</div>}
+        {log && log.flights.length === 0 && <div className="empty">Полётов пока нет. Их записывает помощник со слов или радар сам.</div>}
+        {log?.flights.map((f: any) => (
+          <div key={f.id} className="item" style={{ cursor: "default" }}>
+            <div className="grow">
+              <div className="t">
+                {day(f.day)} · {f.pilot || "пилот не указан"}
+              </div>
+              <div className="s">{[f.client ? `для ${f.client}${f.billed ? " · в счёте" : ""}` : f.source === "radar" ? "радар · клиент не указан" : "свой полёт", f.route].filter(Boolean).join(" · ")}</div>
+            </div>
+            <span className="num">{f.hours.toFixed(1)} ч</span>
+          </div>
+        ))}
+      </div>
+    </Sheet>
+  );
+}
+
 function Aircraft({ s, reload }: { s: any; reload: () => void }) {
   const [edit, setEdit] = useState<any>(null);
+  const [view, setView] = useState<any>(null);
   const [pilot, setPilot] = useState(false);
   const p = s.pilot || {};
   return (
@@ -433,17 +471,17 @@ function Aircraft({ s, reload }: { s: any; reload: () => void }) {
         </button>
       </div>
       <div className="panel list">
-        {s.aircraft.length === 0 && <div className="empty">Добавь борта с налётом и сроками ТО, страховки и ARC — техконтроль предупредит заранее.</div>}
+        {s.aircraft.length === 0 && <div className="empty">Добавь борта: налёт, ТО, оверхол, страховка, ARC и код транспондера. Нажми на борт — откроется его журнал налёта.</div>}
         {s.aircraft.map((a: any) => {
           const left = a.next_service_hours != null ? Number(a.next_service_hours) - Number(a.hours) : null;
           return (
-            <button key={a.id} className="item" onClick={() => setEdit(a)}>
+            <button key={a.id} className="item" onClick={() => setView(a)}>
               <div className="grow">
                 <div className="t">
                   {a.reg} <span className="muted">{a.model}</span>
                 </div>
                 <div className="s">
-                  налёт {Number(a.hours)} ч{a.insurance_until ? ` · страховка до ${day(a.insurance_until, true)}` : ""}
+                  налёт {Number(a.hours).toFixed(1)} ч{a.overhaul_at_hours ? ` · до оверхола ${Math.max(0, Number(a.overhaul_at_hours) - Number(a.hours)).toFixed(0)} ч` : ""}{a.insurance_until ? ` · страховка до ${day(a.insurance_until, true)}` : ""}
                 </div>
               </div>
               {left != null && <span className={"pill " + (left <= 5 ? "red" : left <= 25 ? "amber" : "go")}>ТО через {left.toFixed(0)} ч</span>}
@@ -460,6 +498,17 @@ function Aircraft({ s, reload }: { s: any; reload: () => void }) {
           </div>
         </div>
       </button>
+      {view && (
+        <AircraftSheet
+          a={view}
+          s={s}
+          onClose={() => setView(null)}
+          onEdit={() => {
+            setEdit(view);
+            setView(null);
+          }}
+        />
+      )}
       {edit && <FormSheet title={edit.id ? edit.reg : "Новый борт"} tool="save_aircraft" fields={FORMS.aircraft()} initial={edit} onClose={() => setEdit(null)} done={reload} />}
       {pilot && <FormSheet title="Документы пилота" tool="set_pilot" fields={FORMS.pilot()} initial={p} onClose={() => setPilot(false)} done={reload} />}
     </>

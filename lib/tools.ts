@@ -42,7 +42,8 @@ export const TOOLS = [
   },
   { name: "pay_link", description: "Сделать ссылку на оплату счёта картой (Stripe). Когда клиент оплатит, счёт сам станет «оплачен». Нужен подключённый Stripe.", input_schema: { type: "object", properties: { invoice: S("id или номер счёта") }, required: ["invoice"] } },
   { name: "file_link", description: "Ссылка на файл, которая открывается без пароля 30 дней: счёт, договор, документ или выгрузка для бухгалтера за месяц (kind export, id YYYY-MM).", input_schema: { type: "object", properties: { kind: S("invoice, contract, doc, export", { enum: ["invoice", "contract", "doc", "export"] }), id: S("id; для export — месяц YYYY-MM") }, required: ["kind"] } },
-  { name: "radar", description: "Полёты, которые увидели радары (OpenSky) по бортам с кодом транспондера, но которые ещё не записаны. Записал полёт через log_flight — отметь resolve=id (status logged); свой полёт без счёта или ошибка — status skip. sync=true — проверить радар сейчас.", input_schema: { type: "object", properties: { sync: B("Проверить сейчас"), resolve: S("id полёта радара"), status: S("logged или skip", { enum: ["logged", "skip"] }) } } },
+  { name: "aircraft_log", description: "Журнал налёта борта: все полёты (дата, часы, кто летал, клиент, выставлен ли счёт, записан вручную или радаром), налёт за месяц и год, сколько осталось до ТО и до оверхола.", input_schema: { type: "object", properties: { aircraft: S("Бортовой номер или id") }, required: ["aircraft"] } },
+  { name: "radar", description: "Полёты, которые радар (OpenSky) уже записал в журнал борта, но без пилота и клиента. Спроси Максима, кто летал и для кого, и дополни через log_flight с flight_id. Свой полёт без счёта — resolve=id радара, status skip (в журнале он остаётся). sync=true — проверить радар сейчас.", input_schema: { type: "object", properties: { sync: B("Проверить сейчас"), resolve: S("id полёта радара"), status: S("logged или skip", { enum: ["logged", "skip"] }) } } },
   {
     name: "second_opinion",
     description: "Спросить второе мнение у Gemini и ChatGPT (если Максим подключил их ключи). Вызывай, когда он просит «спроси Gemini/ChatGPT», «собери совет», «что скажут другие», и сам — перед крупным решением: покупка борта или дома, большая сделка, спорный договор. Передай вопрос и короткий контекст с цифрами. Потом сведи мнения в один ответ.",
@@ -55,8 +56,8 @@ export const TOOLS = [
   },
   {
     name: "log_flight",
-    description: "Записать полёт. Если указан клиент — сразу добавляет строку в его будущий счёт по ставке лётного часа. Налёт прибавляется вертолёту.",
-    input_schema: { type: "object", properties: { client: S("Имя или id клиента"), hours: N("Часы, можно 1.5"), route: S("Маршрут, например Рига — Юрмала"), aircraft: S("Борт"), day: S("Дата YYYY-MM-DD, если не сегодня"), notes: S("Заметки"), bill: B("false — не выставлять клиенту") }, required: ["hours"] },
+    description: "Записать полёт в журнал борта. Если указан клиент — сразу добавляет строку в его будущий счёт по ставке лётного часа. Налёт прибавляется вертолёту (счётчики ТО и оверхола). Если этот полёт уже записал радар — дополняет его (клиент, пилот), а не пишет второй раз; для полёта из списка радара передай flight_id.",
+    input_schema: { type: "object", properties: { client: S("Имя или id клиента; пусто — свой полёт без счёта"), pilot: S("Кто летал (пилот)"), flight_id: S("id полёта, записанного радаром, если дополняешь его"), hours: N("Часы, можно 1.5"), route: S("Маршрут, например Рига — Юрмала"), aircraft: S("Борт"), day: S("Дата YYYY-MM-DD, если не сегодня"), notes: S("Заметки"), bill: B("false — не выставлять клиенту") }, required: ["hours"] },
   },
   {
     name: "add_charge",
@@ -76,7 +77,7 @@ export const TOOLS = [
   {
     name: "save_aircraft",
     description: "Вертолёт: борт, модель, налёт, когда ТО (по часам и по дате), страховка, ARC. Без id — новый.",
-    input_schema: { type: "object", properties: { id: S("id"), reg: S("Бортовой номер"), model: S("Модель, например Bell 505"), hours: N("Налёт сейчас"), next_service_hours: N("ТО на налёте"), next_service_date: S("ТО по дате YYYY-MM-DD"), insurance_until: S("YYYY-MM-DD"), arc_until: S("YYYY-MM-DD"), purchase_price: N("Цена покупки — для окупаемости"), purchase_date: S("Дата покупки YYYY-MM-DD"), icao24: S("Код транспондера Mode S (ICAO24, 6 знаков hex, например 502c4f) — чтобы радар сам находил полёты"), notes: S("Заметки") } },
+    input_schema: { type: "object", properties: { id: S("id"), reg: S("Бортовой номер"), model: S("Модель, например Bell 505"), hours: N("Налёт сейчас"), next_service_hours: N("ТО на налёте"), next_service_date: S("ТО по дате YYYY-MM-DD"), insurance_until: S("YYYY-MM-DD"), arc_until: S("YYYY-MM-DD"), purchase_price: N("Цена покупки — для окупаемости"), purchase_date: S("Дата покупки YYYY-MM-DD"), overhaul_at_hours: N("При каком общем налёте оверхол (капремонт), часов"), overhaul_date: S("Оверхол по сроку не позже YYYY-MM-DD"), icao24: S("Код транспондера Mode S (ICAO24, 6 знаков hex, например 502c4f) — чтобы радар сам находил полёты"), notes: S("Заметки") } },
   },
   {
     name: "add_aircraft_cost",
@@ -184,6 +185,8 @@ export async function runTool(name: string, i: any): Promise<{ result: string; c
       if (i.kind === "export") return { result: "Выгрузка (CSV для Excel, ссылка 30 дней): " + (await extra.shareLink("export", i.id || extra.lastMonth())) };
       return { result: "Ссылка на файл (открывается без пароля 30 дней): " + (await extra.shareLink(i.kind, i.id)) };
     }
+    case "aircraft_log":
+      return { result: JSON.stringify(await ops.aircraftLog(i.aircraft)) };
     case "radar": {
       const sync = i.sync ? (await extra.syncRadar()) + "\n" : "";
       if (i.resolve) {
@@ -236,9 +239,9 @@ export async function runTool(name: string, i: any): Promise<{ result: string; c
       const ex = (await q<any>("select * from aircraft where id=$1", [id]))[0] || {};
       const v = { ...ex, ...Object.fromEntries(Object.entries(i).filter(([, x]) => x !== undefined)) };
       await q(
-        `insert into aircraft(id,reg,model,hours,next_service_hours,next_service_date,insurance_until,arc_until,notes,purchase_price,purchase_date,icao24) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-         on conflict(id) do update set reg=$2,model=$3,hours=$4,next_service_hours=$5,next_service_date=$6,insurance_until=$7,arc_until=$8,notes=$9,purchase_price=$10,purchase_date=$11,icao24=$12`,
-        [id, v.reg || "?", v.model || "", Number(v.hours) || 0, v.next_service_hours ?? null, d(v.next_service_date) ?? null, d(v.insurance_until) ?? null, d(v.arc_until) ?? null, v.notes || "", v.purchase_price ?? null, d(v.purchase_date) ?? null, v.icao24 ? String(v.icao24).toLowerCase().trim() : null],
+        `insert into aircraft(id,reg,model,hours,next_service_hours,next_service_date,insurance_until,arc_until,notes,purchase_price,purchase_date,icao24,overhaul_at_hours,overhaul_date) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+         on conflict(id) do update set reg=$2,model=$3,hours=$4,next_service_hours=$5,next_service_date=$6,insurance_until=$7,arc_until=$8,notes=$9,purchase_price=$10,purchase_date=$11,icao24=$12,overhaul_at_hours=$13,overhaul_date=$14`,
+        [id, v.reg || "?", v.model || "", Number(v.hours) || 0, v.next_service_hours ?? null, d(v.next_service_date) ?? null, d(v.insurance_until) ?? null, d(v.arc_until) ?? null, v.notes || "", v.purchase_price ?? null, d(v.purchase_date) ?? null, v.icao24 ? String(v.icao24).toLowerCase().trim() : null, v.overhaul_at_hours === "" ? null : (v.overhaul_at_hours ?? null), d(v.overhaul_date) ?? null],
       );
       return { result: `Вертолёт сохранён: ${id} ${v.reg}.`, changed: true };
     }

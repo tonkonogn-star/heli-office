@@ -117,11 +117,12 @@ export const FORMS = {
     { k: "notes", label: "Заметки", type: "area" },
   ],
   flight: (s: any): F[] => [
-    { k: "client", label: "Клиент", type: "select", options: [["", "Без клиента — свой полёт"], ...clientOpts(s)] },
+    { k: "client", label: "Для кого (счёт)", type: "select", options: [["", "Без клиента — свой полёт"], ...clientOpts(s)] },
+    { k: "pilot", label: "Кто летал", placeholder: "Максим / имя пилота" },
     { k: "hours", label: "Часы", type: "number", half: true, placeholder: "1,5" },
     { k: "day", label: "Дата", type: "date", half: true },
     { k: "route", label: "Маршрут", placeholder: "Рига — Юрмала — Рига" },
-    { k: "aircraft", label: "Борт (если не его обычный)" },
+    { k: "aircraft", label: "Борт", type: "select", options: [["", "Обычный борт клиента"], ...(s.aircraft || []).map((a: any) => [a.reg, a.reg + (a.model ? " · " + a.model : "")])] },
   ],
   charge: (s: any): F[] => [
     { k: "client", label: "Клиент", type: "select", options: clientOpts(s) },
@@ -175,6 +176,8 @@ export const FORMS = {
     { k: "arc_until", label: "ARC до", type: "date" },
     { k: "purchase_price", label: "Цена покупки (для окупаемости)", type: "number", half: true },
     { k: "purchase_date", label: "Куплен", type: "date", half: true },
+    { k: "overhaul_at_hours", label: "Оверхол на налёте, ч", type: "number", half: true },
+    { k: "overhaul_date", label: "Оверхол по сроку", type: "date", half: true },
     { k: "icao24", label: "Код транспондера ICAO24 — радар сам найдёт полёты", placeholder: "например 502c4f" },
     { k: "notes", label: "Заметки", type: "area" },
   ],

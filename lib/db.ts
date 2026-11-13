@@ -122,6 +122,11 @@ alter table sites add column if not exists area_m2 numeric;
 alter table invoices add column if not exists pay_url text;
 alter table invoices add column if not exists pay_link_id text;
 alter table aircraft add column if not exists icao24 text;
+alter table aircraft add column if not exists overhaul_at_hours numeric;
+alter table aircraft add column if not exists overhaul_date date;
+alter table flights add column if not exists pilot text not null default '';
+alter table flights add column if not exists source text not null default 'manual';
+alter table flights add column if not exists radar_id text;
 create table if not exists radar_flights (
   id text primary key, aircraft_id text not null, first_seen timestamptz not null, last_seen timestamptz not null,
   dep text not null default '', arr text not null default '', status text not null default 'new', created_at timestamptz not null default now()

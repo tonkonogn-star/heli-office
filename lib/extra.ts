@@ -198,7 +198,9 @@ export async function syncRadar() {
       for (const f of (await res.json()) as any[]) {
         const id = `${hex}-${f.firstSeen}`;
         const r = await q("insert into radar_flights(id,aircraft_id,first_seen,last_seen,dep,arr) values($1,$2,to_timestamp($3),to_timestamp($4),$5,$6) on conflict(id) do nothing returning id", [id, a.id, f.firstSeen, f.lastSeen, f.estDepartureAirport || "", f.estArrivalAirport || ""]);
-        found += r.length;
+        if (!r.length) continue;
+        found++;
+        await journal(id, a.reg, f);
       }
     } catch (e: any) {
       errs.push(`${a.reg}: ${e?.message || e}`);
@@ -207,9 +209,24 @@ export async function syncRadar() {
   return `Радар: новых полётов ${found}.` + (errs.length ? " Ошибки: " + errs.join("; ") : "");
 }
 
+/** Радар увидел полёт — сразу в журнал налёта борта (часы идут в счётчики ТО и оверхола).
+ *  Если такой полёт уже записан вручную в тот же день — второй раз не пишем. Кто летал и кому счёт — уточняется потом. */
+async function journal(radarId: string, reg: string, f: any) {
+  const hours = Math.max(0.1, Math.round(((Number(f.lastSeen) - Number(f.firstSeen)) / 3600) * 10) / 10);
+  const day = new Date(Number(f.firstSeen) * 1000).toLocaleDateString("sv-SE", { timeZone: "Europe/Riga" });
+  const route = f.estDepartureAirport || f.estArrivalAirport ? `${f.estDepartureAirport || "?"} — ${f.estArrivalAirport || "?"}` : "";
+  const manual = (await q<any>("select id from flights where source<>'radar' and lower(aircraft)=lower($1) and day=$2 and abs(hours-$3) <= 0.5 limit 1", [reg, day, hours]))[0];
+  if (manual) {
+    await q("update radar_flights set status='logged' where id=$1", [radarId]);
+    return;
+  }
+  await q("insert into flights(id,day,aircraft,route,hours,notes,source,radar_id) values($1,$2,$3,$4,$5,'по радару','radar',$6)", [newId("f"), day, reg, route, hours, radarId]);
+  await q("update aircraft set hours = hours + $2 where lower(reg)=lower($1)", [reg, hours]);
+}
+
 export async function radarPending() {
   return q<any>(
-    `select r.*, a.reg, round(extract(epoch from (r.last_seen - r.first_seen))/3600.0, 1)::float hours,
+    `select r.*, a.reg, (select id from flights f where f.radar_id=r.id limit 1) flight_id, round(extract(epoch from (r.last_seen - r.first_seen))/3600.0, 1)::float hours,
        to_char(r.first_seen at time zone 'Europe/Riga','YYYY-MM-DD') as day, to_char(r.first_seen at time zone 'Europe/Riga','HH24:MI') t1, to_char(r.last_seen at time zone 'Europe/Riga','HH24:MI') t2
      from radar_flights r join aircraft a on a.id=r.aircraft_id where r.status='new' order by r.first_seen desc limit 30`,
   );

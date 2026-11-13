@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { act, api, money, day, isPast, toast, todayIso, Sheet } from "./kit";
+import { act, api, money, day, isPast, toast, todayIso, Sheet, DoneCheck } from "./kit";
 import { FormSheet, FORMS } from "./Forms";
 import { Seg, Docs } from "./Shared";
 import type { Nav } from "./App";
@@ -318,18 +318,7 @@ function Tasks({ s, reload }: { s: any; reload: () => void }) {
         {list.length === 0 && <div className="empty">Личные дела без привязки к работе: записаться к врачу, продлить паспорт, купить подарок.</div>}
         {list.map((t: any) => (
           <div key={t.id} className="item" style={{ cursor: "default" }}>
-            <button
-              className="btn small"
-              style={{ width: 34, padding: 0 }}
-              aria-label={"Готово: " + t.title}
-              onClick={async () => {
-                await act("save_task", { id: t.id, status: "done" });
-                toast("Дело закрыто");
-                reload();
-              }}
-            >
-              ✓
-            </button>
+            <DoneCheck label={"Готово: " + t.title} run={() => act("save_task", { id: t.id, status: "done" })} after={reload} />
             <button className="grow" style={{ background: "none", border: 0, padding: 0, textAlign: "left", cursor: "pointer" }} onClick={() => setEdit(t)}>
               <div className="t">{t.title}</div>
               {t.notes && <div className="s">{t.notes}</div>}

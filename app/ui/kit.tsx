@@ -233,3 +233,39 @@ export function Toast() {
     </div>
   ) : null;
 }
+
+/** Кружок «готово»: галочка появляется сразу, строка мягко уходит, а запрос идёт в фоне — без задержки на ожидание сервера. */
+export function DoneCheck({ label, run, after }: { label: string; run: () => Promise<unknown>; after: () => void }) {
+  const [on, setOn] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
+  const click = async () => {
+    if (on) return;
+    setOn(true);
+    const row = ref.current?.closest(".item") as HTMLElement | null;
+    row?.classList.add("leaving");
+    const pause = new Promise((r) => setTimeout(r, 650));
+    try {
+      await run();
+      await pause;
+      after();
+    } catch (e: any) {
+      row?.classList.remove("leaving");
+      setOn(false);
+      toast(e?.message || "Не получилось");
+      return;
+    }
+    // если строка осталась на экране (например, дело повторяется) — вернуть её в обычный вид
+    setTimeout(() => {
+      if (!ref.current) return;
+      row?.classList.remove("leaving");
+      setOn(false);
+    }, 2500);
+  };
+  return (
+    <button ref={ref} className={"donechk" + (on ? " on" : "")} aria-label={label} onClick={click}>
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+        <path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
+}

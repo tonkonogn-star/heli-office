@@ -356,3 +356,19 @@ button.item.issue { grid-template-columns: 8px 1fr; }
 .sc-time .track { height: 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .sc-time .track i { display: block; height: 100%; background: #7fdcae; }
 .sc-time .trow b { text-align: right; }
+
+/* Отметка «готово»: галочка рисуется сразу, кружок вспыхивает, строка зачёркивается и уходит */
+.donechk { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--line, #ccc); background: transparent; color: transparent; flex-shrink: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: background 0.18s, border-color 0.18s, color 0.18s; }
+.donechk::before { content: ""; position: absolute; inset: -8px; }
+.donechk:hover { border-color: var(--go, #1f7a4d); color: var(--go, #1f7a4d); }
+.donechk path { stroke-dasharray: 24; stroke-dashoffset: 0; }
+.donechk.on { background: var(--go, #1f7a4d); border-color: var(--go, #1f7a4d); color: #fff; animation: chk-ring 0.55s ease-out; }
+.donechk.on svg { animation: chk-pop 0.42s cubic-bezier(0.2, 1.5, 0.4, 1); }
+.donechk.on path { animation: chk-draw 0.32s ease-out; }
+@keyframes chk-pop { 0% { transform: scale(0.3); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes chk-draw { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+@keyframes chk-ring { 0% { box-shadow: 0 0 0 0 rgba(31, 122, 77, 0.45); } 100% { box-shadow: 0 0 0 12px rgba(31, 122, 77, 0); } }
+.item.leaving .t { text-decoration: line-through; opacity: 0.55; transition: opacity 0.2s; }
+.item.leaving { animation: row-leave 0.3s ease-in 0.38s forwards; }
+@keyframes row-leave { to { opacity: 0; transform: translateX(14px); } }
+@media (prefers-reduced-motion: reduce) { .donechk.on, .donechk.on svg, .donechk.on path, .item.leaving { animation: none; } }

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, act, money, short, day, isPast, Sheet, toast, Icon } from "./kit";
+import { api, act, money, short, day, isPast, Sheet, toast, Icon, DoneCheck } from "./kit";
 import type { Nav } from "./App";
 import { Tiles, Fold } from "./Shared";
 
@@ -33,12 +33,6 @@ export default function Today({ s, go, reload }: { s: any; go: (n: Nav) => void;
       .sort((a: any, b: any) => (a.level === "red" ? 0 : 1) - (b.level === "red" ? 0 : 1))
       .map((i: any) => ({ ...i, go: AREA_GO[i.area] })),
   ];
-
-  const done = async (id: string) => {
-    await act("save_task", { id, status: "done" });
-    toast("Дело закрыто");
-    reload();
-  };
 
   return (
     <>
@@ -105,9 +99,7 @@ export default function Today({ s, go, reload }: { s: any; go: (n: Nav) => void;
         }
         render={(t: any) => (
           <div key={t.id} className="item" style={{ cursor: "default" }}>
-            <button className="btn small" aria-label={"Готово: " + t.title} onClick={() => done(t.id)} style={{ width: 34, padding: 0 }}>
-              ✓
-            </button>
+            <DoneCheck label={"Готово: " + t.title} run={() => act("save_task", { id: t.id, status: "done" })} after={reload} />
             <div className="grow">
               <div className="t">{t.title}</div>
               <div className="s">{t.space === "heli" ? "Heliclub" : t.space === "build" ? "Стройка" : "Личное"}</div>

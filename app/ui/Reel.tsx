@@ -117,13 +117,13 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
   },
   {
     title: "Деньги приходят быстрее",
-    text: "Пришли выписку банка — я сам отмечу, кто заплатил. В счёте — ссылка «оплатить картой». Радар видит, когда борт летал, и напомнит, если полёт не записан. А раз в месяц — выгрузка бухгалтеру одним файлом.",
+    text: "Пришли выписку банка — я сам отмечу, кто заплатил. В счёте — ссылка «оплатить картой». Полёты, которые записал радар, я доведу до счёта. А раз в месяц — выгрузка бухгалтеру одним файлом.",
     scene: () => (
       <div className="sc-mail">
         {[
           ["Выписка банка", "SEB · 3 поступления", "2 счёта оплачены"],
           ["Счёт 2026-014", "Baltic Charter · 3 120 €", "Оплачен картой"],
-          ["Радар · YL-HCB", "10.11 · 14:02–15:10", "Полёт не записан"],
+          ["Радар · YL-HCB", "13.11 · 1,5 ч в журнале", "Кому счёт?"],
         ].map(([from, subj, chip], k) => (
           <div key={from} className="mrow slide-in" style={d(0.2 + k * 0.5)}>
             <div>
@@ -138,6 +138,33 @@ const SLIDES: { title: string; text: string; scene: () => React.ReactNode }[] = 
         <div className="saved rise" style={d(2.6)}>
           выгрузка бухгалтеру — одной кнопкой
         </div>
+      </div>
+    ),
+  },
+  {
+    title: "Журнал каждого борта",
+    text: "Радар видит вертолёт по транспондеру и сам пишет полёт в журнал, часы идут в счётчики ТО и оверхола. Я спрошу только, кто летал и для кого.",
+    scene: () => (
+      <div className="sc-mail">
+        <div className="mrow rise" style={d(0.1)}>
+          <div>
+            <b>YL-HCB · Bell 505</b>
+            <span>
+              до ТО <Count to={12} suffix=" ч" /> · до оверхола <Count to={2182} ms={1800} suffix=" ч" />
+            </span>
+          </div>
+        </div>
+        {[
+          ["13.11 · радар · 1,5 ч", "Кто летал?"],
+          ["13.11 · Андрис · Петров Air", "В счёте"],
+        ].map(([t, chip], k) => (
+          <div key={t} className="mrow slide-in" style={{ ...d(0.6 + k * 0.6), display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <b style={{ fontSize: 14 }}>{t}</b>
+            <i className="chip pop" style={d(1.1 + k * 0.6)}>
+              {chip}
+            </i>
+          </div>
+        ))}
       </div>
     ),
   },

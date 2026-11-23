@@ -136,6 +136,15 @@ create table if not exists comps (
   price numeric, area_m2 numeric, status text not null default 'в продаже', note text not null default '', day date not null default current_date
 );
 create table if not exists facts (id bigserial primary key, text text not null, created_at timestamptz not null default now());
+-- Закрываем таблицы от публичного доступа (Supabase REST по anon-ключу): включаем RLS без политик.
+-- Само приложение ходит в базу напрямую как владелец таблиц, на него RLS не действует.
+do $$
+declare t record;
+begin
+  for t in select tablename from pg_tables where schemaname = 'public' and not rowsecurity loop
+    execute format('alter table public.%I enable row level security', t.tablename);
+  end loop;
+end $$;
 `;
 
 async function ready() {
